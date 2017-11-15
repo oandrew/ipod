@@ -133,6 +133,11 @@ type ReturniPodName struct {
 	Name []byte
 }
 
+func (s ReturniPodName) MarshalPayload(w io.Writer) error {
+	w.Write(s.Name)
+	return nil
+}
+
 type RequestiPodSoftwareVersion struct{}
 
 type ReturniPodSoftwareVersion struct {
@@ -144,6 +149,11 @@ type RequestiPodSerialNum struct {
 }
 type ReturniPodSerialNum struct {
 	Serial []byte
+}
+
+func (s ReturniPodSerialNum) MarshalPayload(w io.Writer) error {
+	w.Write(s.Serial)
+	return nil
 }
 
 type RequestLingoProtocolVersion struct {
