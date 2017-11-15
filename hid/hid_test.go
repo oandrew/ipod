@@ -31,16 +31,16 @@ func (rr *testReportReader) ReadReport() (hid.Report, error) {
 }
 
 var testReportDefs1 = hid.ReportDefs{
-	hid.ReportDef{ID: 0x01, Len: 3, Dir: hid.ReportDirAccIn},
+	hid.ReportDef{ID: 0x01, Len: 2, Dir: hid.ReportDirAccIn},
 }
 
 var testReportDefs2 = hid.ReportDefs{
-	hid.ReportDef{ID: 0x01, Len: 3, Dir: hid.ReportDirAccIn},
-	hid.ReportDef{ID: 0x02, Len: 4, Dir: hid.ReportDirAccIn},
+	hid.ReportDef{ID: 0x01, Len: 2, Dir: hid.ReportDirAccIn},
+	hid.ReportDef{ID: 0x02, Len: 3, Dir: hid.ReportDirAccIn},
 }
 
 var testReportDefs3 = hid.ReportDefs{
-	hid.ReportDef{ID: 0x01, Len: 5, Dir: hid.ReportDirAccIn},
+	hid.ReportDef{ID: 0x01, Len: 4, Dir: hid.ReportDirAccIn},
 }
 
 func TestEncoder(t *testing.T) {
@@ -150,6 +150,18 @@ func TestHidDecoder(t *testing.T) {
 		})
 	}
 }
+
+// func TestHidReportReader(t *testing.T) {
+// 	// 0x0F - len 13 - payload 12
+// 	data := []byte{0x0f, 0x00, 0x55, 0x04, 0x00, 0x38, 0x00, 0x00, 0xc4, 0x00, 0x00, 0x00, 0xff}
+// 	rr := hid.NewRawReportReader(bytes.NewReader(data))
+// 	dec := hid.NewDecoderDefault(rr)
+// 	frame, err := dec.ReadFrame()
+// 	//rep, err := rr.ReadReport()
+// 	//t.Logf("err: %v report: %#+v", err, rep)
+// 	t.Logf("err: %v frame (%02d) %#v", err, len(frame), frame)
+
+// }
 
 // func TestHidDecoderPacket(t *testing.T) {
 // 	data := []byte{0x0f, 0x00, 0x55, 0x04, 0x00, 0x38, 0x00, 0x00, 0xc4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}

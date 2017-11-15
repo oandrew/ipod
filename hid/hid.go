@@ -57,7 +57,7 @@ func (rr *rawReportReader) ReadReport() (Report, error) {
 	return Report{
 		ID:          rr.buf[0],
 		LinkControl: LinkControl(rr.buf[1]),
-		Data:        rr.buf[2:],
+		Data:        rr.buf[2:n],
 	}, nil
 }
 

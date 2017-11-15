@@ -39,15 +39,15 @@ var DefaultReportDefs = ReportDefs{
 	ReportDef{ID: 0x0B, Len: 513, Dir: ReportDirAccIn},
 	ReportDef{ID: 0x0C, Len: 767, Dir: ReportDirAccIn},
 
-	ReportDef{ID: 0x0D, Len: 0x05, Dir: ReportDirAccOut},
-	ReportDef{ID: 0x0E, Len: 0x09, Dir: ReportDirAccOut},
-	ReportDef{ID: 0x0F, Len: 0x0D, Dir: ReportDirAccOut},
-	ReportDef{ID: 0x10, Len: 0x11, Dir: ReportDirAccOut},
-	ReportDef{ID: 0x11, Len: 0x19, Dir: ReportDirAccOut},
-	ReportDef{ID: 0x12, Len: 0x31, Dir: ReportDirAccOut},
-	ReportDef{ID: 0x13, Len: 0x5F, Dir: ReportDirAccOut},
-	ReportDef{ID: 0x14, Len: 0xC1, Dir: ReportDirAccOut},
-	ReportDef{ID: 0x15, Len: 0xFF, Dir: ReportDirAccOut},
+	ReportDef{ID: 0x0D, Len: 5, Dir: ReportDirAccOut},
+	ReportDef{ID: 0x0E, Len: 9, Dir: ReportDirAccOut},
+	ReportDef{ID: 0x0F, Len: 13, Dir: ReportDirAccOut},
+	ReportDef{ID: 0x10, Len: 17, Dir: ReportDirAccOut},
+	ReportDef{ID: 0x11, Len: 25, Dir: ReportDirAccOut},
+	ReportDef{ID: 0x12, Len: 49, Dir: ReportDirAccOut},
+	ReportDef{ID: 0x13, Len: 95, Dir: ReportDirAccOut},
+	ReportDef{ID: 0x14, Len: 193, Dir: ReportDirAccOut},
+	ReportDef{ID: 0x15, Len: 255, Dir: ReportDirAccOut},
 }
 
 func (defs ReportDefs) Pick(payloadSize int, dir ReportDir) (ReportDef, error) {
