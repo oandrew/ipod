@@ -54,15 +54,15 @@ func ackFIDTokens(tokens SetFIDTokenValues) RetFIDTokenValueACKs {
 				buf.Write([]byte{0x03, 0x00, 0x01, 0x00})
 			case 0x02:
 				//accinfo
-				buf.Write([]byte{0x04, 0x00, 0x02, 0x00})
+				buf.Write([]byte{0x04, 0x00, 0x02, 0x00, token.Data[0]})
 			case 0x03:
 				//ipod pref
 				//check
-				buf.Write([]byte{0x04, 0x00, 0x03, 0x00, 0x00})
+				buf.Write([]byte{0x04, 0x00, 0x03, 0x00, token.Data[0]})
 			case 0x04:
 				//ea proto
 				//check
-				buf.Write([]byte{0x04, 0x00, 0x04, 0x00, 0x00})
+				buf.Write([]byte{0x04, 0x00, 0x04, 0x00, token.Data[0]})
 			case 0x05:
 				// bundleseed
 				buf.Write([]byte{0x03, 0x00, 0x05, 0x00})
@@ -123,22 +123,27 @@ func HandleGeneral(req ipod.Packet, tr ipod.PacketWriter, dev DeviceGeneral) err
 		ipod.Respond(req, tr, ackSuccess(req))
 
 	//GetDevAuthenticationInfo
-	case RetDevAuthenticationInfoV1:
-		ipod.Respond(req, tr, AckDevAuthenticationInfo{Status: DevAuthInfoStatusSupported})
-		// get signature
-	case RetDevAuthenticationInfoV2:
-		if msg.CertCurrentSection < msg.CertMaxSection {
-			ipod.Respond(req, tr, ackSuccess(req))
+	case RetDevAuthenticationInfo:
+		if msg.Major >= 2 {
+			if msg.CertCurrentSection < msg.CertMaxSection {
+				ipod.Respond(req, tr, ackSuccess(req))
+			} else {
+				ipod.Respond(req, tr, AckDevAuthenticationInfo{Status: DevAuthInfoStatusSupported})
+
+				ipod.Respond(req, tr, GetDevAuthenticationSignatureV2{Counter: 0})
+			}
 		} else {
 			ipod.Respond(req, tr, AckDevAuthenticationInfo{Status: DevAuthInfoStatusSupported})
-			// get signature
 		}
 
 	// GetDevAuthenticationSignatureV1
-	case RetDevAuthenticationSignatureV1:
-		ipod.Respond(req, tr, AckDevAuthenticationStatus{Status: DevAuthStatusPassed})
-	// GetDevAuthenticationSignatureV2
-	case RetDevAuthenticationSignatureV2:
+	// case RetDevAuthenticationSignatureV1:
+	// 	ipod.Respond(req, tr, AckDevAuthenticationStatus{Status: DevAuthStatusPassed})
+	// // GetDevAuthenticationSignatureV2
+	// case RetDevAuthenticationSignatureV2:
+	// 	ipod.Respond(req, tr, AckDevAuthenticationStatus{Status: DevAuthStatusPassed})
+
+	case RetDevAuthenticationSignature:
 		ipod.Respond(req, tr, AckDevAuthenticationStatus{Status: DevAuthStatusPassed})
 
 	case GetiPodAuthenticationInfo:

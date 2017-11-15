@@ -3,6 +3,7 @@ package general
 import (
 	"bufio"
 	"io"
+	"io/ioutil"
 
 	"git.andrewo.pw/andrew/ipod"
 )
@@ -14,77 +15,79 @@ func init() {
 const LingoGeneralID = 0x00
 
 var Lingos struct {
-	RequestIdentify                 `id:"0x00"`
-	ACK                             `id:"0x02"`
-	ACKPending                      `id:"0x02"`
-	ACKDataDropped                  `id:"0x02"`
-	RequestRemoteUIMode             `id:"0x03"`
-	ReturnRemoteUIMode              `id:"0x04"`
-	EnterRemoteUIMode               `id:"0x05"`
-	ExitRemoteUIMode                `id:"0x06"`
-	RequestiPodName                 `id:"0x07"`
-	ReturniPodName                  `id:"0x08"`
-	RequestiPodSoftwareVersion      `id:"0x09"`
-	ReturniPodSoftwareVersion       `id:"0x0A"`
-	RequestiPodSerialNum            `id:"0x0B"`
-	ReturniPodSerialNum             `id:"0x0C"`
-	RequestLingoProtocolVersion     `id:"0x0F"`
-	ReturnLingoProtocolVersion      `id:"0x10"`
-	RequestTransportMaxPayloadSize  `id:"0x11"`
-	ReturnTransportMaxPayloadSize   `id:"0x12"`
-	IdentifyDeviceLingoes           `id:"0x13"`
-	GetDevAuthenticationInfo        `id:"0x14"`
-	RetDevAuthenticationInfoV1      `id:"0x15"`
-	RetDevAuthenticationInfoV2      `id:"0x15"`
+	RequestIdentify                `id:"0x00"`
+	ACK                            `id:"0x02"`
+	ACKPending                     `id:"0x02"`
+	ACKDataDropped                 `id:"0x02"`
+	RequestRemoteUIMode            `id:"0x03"`
+	ReturnRemoteUIMode             `id:"0x04"`
+	EnterRemoteUIMode              `id:"0x05"`
+	ExitRemoteUIMode               `id:"0x06"`
+	RequestiPodName                `id:"0x07"`
+	ReturniPodName                 `id:"0x08"`
+	RequestiPodSoftwareVersion     `id:"0x09"`
+	ReturniPodSoftwareVersion      `id:"0x0A"`
+	RequestiPodSerialNum           `id:"0x0B"`
+	ReturniPodSerialNum            `id:"0x0C"`
+	RequestLingoProtocolVersion    `id:"0x0F"`
+	ReturnLingoProtocolVersion     `id:"0x10"`
+	RequestTransportMaxPayloadSize `id:"0x11"`
+	ReturnTransportMaxPayloadSize  `id:"0x12"`
+	IdentifyDeviceLingoes          `id:"0x13"`
+	GetDevAuthenticationInfo       `id:"0x14"`
+	//RetDevAuthenticationInfoV1      `id:"0x15"`
+	//RetDevAuthenticationInfoV2      `id:"0x15"`
+	RetDevAuthenticationInfo        `id:"0x15"`
 	AckDevAuthenticationInfo        `id:"0x16"`
 	GetDevAuthenticationSignatureV1 `id:"0x17"`
 	GetDevAuthenticationSignatureV2 `id:"0x17"`
-	RetDevAuthenticationSignatureV1 `id:"0x18"`
-	RetDevAuthenticationSignatureV2 `id:"0x18"`
-	AckDevAuthenticationStatus      `id:"0x19"`
-	GetiPodAuthenticationInfo       `id:"0x1A"`
-	RetiPodAuthenticationInfo       `id:"0x1B"`
-	AckiPodAuthenticationInfo       `id:"0x1C"`
-	GetiPodAuthenticationSignature  `id:"0x1D"`
-	RetiPodAuthenticationSignature  `id:"0x1E"`
-	AckiPodAuthenticationStatus     `id:"0x1F"`
-	NotifyiPodStateChange           `id:"0x23"`
-	GetiPodOptions                  `id:"0x24"`
-	RetiPodOptions                  `id:"0x25"`
-	GetAccessoryInfo                `id:"0x27"`
-	RetAccessoryInfo                `id:"0x28"`
-	GetiPodPreferences              `id:"0x29"`
-	RetiPodPreferences              `id:"0x2A"`
-	SetiPodPreferences              `id:"0x2B"`
-	GetUIMode                       `id:"0x35"`
-	RetUIMode                       `id:"0x36"`
-	SetUIMode                       `id:"0x37"`
-	StartIDPS                       `id:"0x38"`
-	SetFIDTokenValues               `id:"0x39"`
-	RetFIDTokenValueACKs            `id:"0x3A"`
-	EndIDPS                         `id:"0x3B"`
-	IDPSStatus                      `id:"0x3C"`
-	OpenDataSessionForProtocol      `id:"0x3F"`
-	CloseDataSession                `id:"0x40"`
-	DevACK                          `id:"0x41"`
-	DevDataTransfer                 `id:"0x42"`
-	IPodDataTransfer                `id:"0x43"`
-	SetAccStatusNotification        `id:"0x46"`
-	RetAccStatusNotification        `id:"0x47"`
-	AccessoryStatusNotification     `id:"0x48"`
-	SetEventNotification            `id:"0x49"`
-	IPodNotification                `id:"0x4A"`
-	GetiPodOptionsForLingo          `id:"0x4B"`
-	RetiPodOptionsForLingo          `id:"0x4C"`
-	GetEventNotification            `id:"0x4D"`
-	RetEventNotification            `id:"0x4E"`
-	GetSupportedEventNotification   `id:"0x4F"`
-	CancelCommand                   `id:"0x50"`
-	RetSupportedEventNotification   `id:"0x51"`
-	SetAvailableCurrent             `id:"0x54"`
-	RequestApplicationLaunch        `id:"0x64"`
-	GetNowPlayingFocusApp           `id:"0x65"`
-	RetNowPlayingFocusApp           `id:"0x66"`
+	//RetDevAuthenticationSignatureV1 `id:"0x18"`
+	//RetDevAuthenticationSignatureV2 `id:"0x18"`
+	RetDevAuthenticationSignature  `id:"0x18"`
+	AckDevAuthenticationStatus     `id:"0x19"`
+	GetiPodAuthenticationInfo      `id:"0x1A"`
+	RetiPodAuthenticationInfo      `id:"0x1B"`
+	AckiPodAuthenticationInfo      `id:"0x1C"`
+	GetiPodAuthenticationSignature `id:"0x1D"`
+	RetiPodAuthenticationSignature `id:"0x1E"`
+	AckiPodAuthenticationStatus    `id:"0x1F"`
+	NotifyiPodStateChange          `id:"0x23"`
+	GetiPodOptions                 `id:"0x24"`
+	RetiPodOptions                 `id:"0x25"`
+	GetAccessoryInfo               `id:"0x27"`
+	RetAccessoryInfo               `id:"0x28"`
+	GetiPodPreferences             `id:"0x29"`
+	RetiPodPreferences             `id:"0x2A"`
+	SetiPodPreferences             `id:"0x2B"`
+	GetUIMode                      `id:"0x35"`
+	RetUIMode                      `id:"0x36"`
+	SetUIMode                      `id:"0x37"`
+	StartIDPS                      `id:"0x38"`
+	SetFIDTokenValues              `id:"0x39"`
+	RetFIDTokenValueACKs           `id:"0x3A"`
+	EndIDPS                        `id:"0x3B"`
+	IDPSStatus                     `id:"0x3C"`
+	OpenDataSessionForProtocol     `id:"0x3F"`
+	CloseDataSession               `id:"0x40"`
+	DevACK                         `id:"0x41"`
+	DevDataTransfer                `id:"0x42"`
+	IPodDataTransfer               `id:"0x43"`
+	SetAccStatusNotification       `id:"0x46"`
+	RetAccStatusNotification       `id:"0x47"`
+	AccessoryStatusNotification    `id:"0x48"`
+	SetEventNotification           `id:"0x49"`
+	IPodNotification               `id:"0x4A"`
+	GetiPodOptionsForLingo         `id:"0x4B"`
+	RetiPodOptionsForLingo         `id:"0x4C"`
+	GetEventNotification           `id:"0x4D"`
+	RetEventNotification           `id:"0x4E"`
+	GetSupportedEventNotification  `id:"0x4F"`
+	CancelCommand                  `id:"0x50"`
+	RetSupportedEventNotification  `id:"0x51"`
+	SetAvailableCurrent            `id:"0x54"`
+	RequestApplicationLaunch       `id:"0x64"`
+	GetNowPlayingFocusApp          `id:"0x65"`
+	RetNowPlayingFocusApp          `id:"0x66"`
 }
 
 type RequestIdentify struct{}
@@ -167,17 +170,51 @@ type IdentifyDeviceLingoes struct {
 
 type GetDevAuthenticationInfo struct{}
 
-type RetDevAuthenticationInfoV1 struct {
-	Major byte
-	Minor byte
-}
+// type RetDevAuthenticationInfo struct {
+// 	Major byte
+// 	Minor byte
+// }
 
-type RetDevAuthenticationInfoV2 struct {
+type RetDevAuthenticationInfo struct {
 	Major              byte
 	Minor              byte
 	CertCurrentSection byte
 	CertMaxSection     byte
 	CertData           []byte
+}
+
+func (s *RetDevAuthenticationInfo) UnmarshalPayload(r io.Reader) error {
+	br := bufio.NewReader(r)
+	var err error
+	s.Major, err = br.ReadByte()
+	if err != nil {
+		return err
+	}
+
+	s.Minor, err = br.ReadByte()
+	if err != nil {
+		return err
+	}
+
+	if s.Major >= 0x02 {
+		s.CertCurrentSection, err = br.ReadByte()
+		if err != nil {
+			return err
+		}
+
+		s.CertMaxSection, err = br.ReadByte()
+		if err != nil {
+			return err
+		}
+
+		s.CertData, err = ioutil.ReadAll(br)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+
 }
 
 type DevAuthInfoStatus uint8
@@ -199,12 +236,17 @@ type GetDevAuthenticationSignatureV2 struct {
 	Counter   byte
 }
 
-type RetDevAuthenticationSignatureV1 struct {
-	Signature [16]byte
+type RetDevAuthenticationSignature struct {
+	Signature []byte
 }
 
-type RetDevAuthenticationSignatureV2 struct {
-	Signature [20]byte
+func (s *RetDevAuthenticationSignature) UnmarshalPayload(r io.Reader) error {
+	var err error
+	s.Signature, err = ioutil.ReadAll(r)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 type DevAuthStatus uint8

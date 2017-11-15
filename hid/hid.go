@@ -68,6 +68,26 @@ func NewRawReportReader(r io.Reader) ReportReader {
 	}
 }
 
+type rawReportWriter struct {
+	w   io.Writer
+	buf bytes.Buffer
+}
+
+func (rw *rawReportWriter) WriteReport(report Report) error {
+	rw.buf.Reset()
+	rw.buf.WriteByte(report.ID)
+	rw.buf.WriteByte(byte(report.LinkControl))
+	rw.buf.Write(report.Data)
+	_, err := rw.buf.WriteTo(rw.w)
+	return err
+}
+
+func NewRawReportWriter(w io.Writer) ReportWriter {
+	return &rawReportWriter{
+		w: w,
+	}
+}
+
 type hidEncoder struct {
 	reportDefs ReportDefs
 	w          ReportWriter

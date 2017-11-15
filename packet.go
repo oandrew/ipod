@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"reflect"
 )
 
@@ -15,6 +14,32 @@ type Packet struct {
 	ID          LingoCmdID
 	Transaction *Transaction
 	Payload     interface{}
+}
+
+func (p Packet) WithTransaction(t uint16) Packet {
+	*p.Transaction = Transaction(t)
+	return p
+}
+
+func BuildPacket(payload interface{}) (Packet, error) {
+	id, ok := LookupID(payload)
+	if !ok {
+		return Packet{}, errors.New("payload not known")
+	}
+	return Packet{
+		ID:      id,
+		Payload: payload,
+	}, nil
+
+}
+
+func Respond(req Packet, pw PacketWriter, payload interface{}) {
+	p, err := BuildPacket(payload)
+	if err != nil {
+		return
+	}
+	p.Transaction = req.Transaction
+	pw.WritePacket(p)
 }
 
 type LingoCmdID uint16
@@ -57,12 +82,9 @@ type PacketWriter interface {
 	WritePacket(Packet) error
 }
 
-func Respond(req Packet, pw PacketWriter, payload interface{}) {
-	pw.WritePacket(Packet{
-		ID:          0,
-		Transaction: req.Transaction,
-		Payload:     payload,
-	})
+type PacketReadWriter interface {
+	PacketReader
+	PacketWriter
 }
 
 type RawPacket struct {
@@ -233,7 +255,7 @@ func MarshalPacket(w io.Writer, p *Packet) (err error) {
 		binWrite(&payloadBuf, *p.Transaction)
 	}
 	if d, ok := p.Payload.(PayloadMarshaler); ok {
-		log.Printf("Custom PayloadMarshaler")
+		//log.Printf("Custom PayloadMarshaler")
 		if err := d.MarshalPayload(&payloadBuf); err != nil {
 			return err
 		}
@@ -259,6 +281,16 @@ func UnmarshalPacket(r io.Reader, pp *Packet) (err error) {
 	defer catchPanicErr(" Packet unmarshal: ", &err)
 
 	br := bufio.NewReader(r)
+	for {
+		b, err := br.ReadByte()
+		if err != nil {
+			return err
+		}
+		if b == PacketStartByte {
+			br.UnreadByte()
+			break
+		}
+	}
 	header, err := br.Peek(2)
 	if err != nil {
 		return err
@@ -292,7 +324,7 @@ func UnmarshalPacket(r io.Reader, pp *Packet) (err error) {
 
 	if d, ok := lookup.Payload.(PayloadUnmarshaler); ok {
 		if err := d.UnmarshalPayload(dr); err != nil {
-			log.Print(err)
+			//log.Print(err)
 			return err
 		}
 
@@ -300,25 +332,8 @@ func UnmarshalPacket(r io.Reader, pp *Packet) (err error) {
 		binRead(dr, lookup.Payload)
 	}
 	pp.Payload = reflect.ValueOf(lookup.Payload).Elem().Interface()
-	log.Printf("%#v", pp)
+	//log.Printf("%#v", pp)
 	return nil
-
-}
-
-func (p Packet) WithTransaction(t uint16) Packet {
-	*p.Transaction = Transaction(t)
-	return p
-}
-
-func BuildPacket(payload interface{}) (Packet, error) {
-	id, ok := LookupID(payload)
-	if !ok {
-		return Packet{}, errors.New("payload not known")
-	}
-	return Packet{
-		ID:      id,
-		Payload: payload,
-	}, nil
 
 }
 

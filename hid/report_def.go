@@ -19,7 +19,7 @@ type ReportDef struct {
 }
 
 func (def ReportDef) MaxPayload() int {
-	return def.Len - 2
+	return def.Len - 1
 }
 
 // Sorted list of reports

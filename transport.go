@@ -2,6 +2,8 @@ package ipod
 
 import (
 	"bytes"
+	"io"
+	"log"
 )
 
 type Transport interface {
@@ -23,19 +25,24 @@ type transportPacketReader struct {
 }
 
 func (tpr *transportPacketReader) ReadPacket() (Packet, error) {
-	if tpr.r == nil || tpr.r.Len() == 0 {
-		frame, err := tpr.tr.ReadFrame()
-		if err != nil {
-			return Packet{}, err
-		}
-		tpr.r = bytes.NewReader(frame)
-	}
 
-	var pkt Packet
-	if err := UnmarshalPacket(tpr.r, &pkt); err != nil {
-		return Packet{}, err
+	for {
+		if tpr.r == nil || tpr.r.Len() == 0 {
+			frame, err := tpr.tr.ReadFrame()
+			if err != nil {
+				return Packet{}, err
+			}
+			log.Printf("frame: [% 02x]", frame)
+			tpr.r = bytes.NewReader(frame)
+		}
+		log.Printf("leftover: %d", tpr.r.Len())
+		var pkt Packet
+		err := UnmarshalPacket(tpr.r, &pkt)
+		if err == io.EOF {
+			continue
+		}
+		return pkt, err
 	}
-	return pkt, nil
 
 }
 
