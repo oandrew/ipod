@@ -42,22 +42,60 @@ func Respond(req Packet, pw PacketWriter, payload interface{}) {
 	pw.WritePacket(p)
 }
 
-type LingoCmdID uint16
+type LingoCmdID uint32
 
-func (id LingoCmdID) LingoID() uint8 {
-	return uint8(id >> 8 & 0xff)
+func (id LingoCmdID) LingoID() uint16 {
+	return uint16(id >> 16 & 0xffff)
 }
 
-func (id LingoCmdID) CmdID() uint8 {
-	return uint8(id & 0xff)
+func (id LingoCmdID) CmdID() uint16 {
+	return uint16(id & 0xffff)
 }
 
 func (id LingoCmdID) GoString() string {
-	return fmt.Sprintf("%#04x", id)
+	return fmt.Sprintf("(%#02x|%#0*x)", id.LingoID(), cmdIDLen(id.LingoID())*2, id.CmdID())
 }
 
-func NewLingoCmdID(lingo, cmd uint8) LingoCmdID {
-	return LingoCmdID(uint16(lingo)<<8 | uint16(cmd))
+func (id LingoCmdID) len() int {
+	return 1 + cmdIDLen(id.LingoID())
+}
+
+func cmdIDLen(lingoID uint16) int {
+	switch lingoID {
+	case 0x04:
+		return 2
+	default:
+		return 1
+	}
+}
+
+func marshalLingoCmdID(w io.Writer, id LingoCmdID) {
+	binWrite(w, byte(id.LingoID()))
+	switch cmdIDLen(id.LingoID()) {
+	case 2:
+		binWrite(w, uint16(id.CmdID()))
+	default:
+		binWrite(w, byte(id.CmdID()))
+	}
+}
+
+func unmarshalLingoCmdID(r io.Reader, id *LingoCmdID) {
+	var lingoID byte
+	binRead(r, &lingoID)
+	switch cmdIDLen(uint16(lingoID)) {
+	case 2:
+		var cmdID uint16
+		binRead(r, &cmdID)
+		*id = NewLingoCmdID(uint16(lingoID), uint16(cmdID))
+	default:
+		var cmdID uint8
+		binRead(r, &cmdID)
+		*id = NewLingoCmdID(uint16(lingoID), uint16(cmdID))
+	}
+}
+
+func NewLingoCmdID(lingo, cmd uint16) LingoCmdID {
+	return LingoCmdID(uint32(lingo)<<16 | uint32(cmd))
 }
 
 type Transaction uint16
@@ -93,7 +131,7 @@ type RawPacket struct {
 }
 
 func (p *RawPacket) Length() int {
-	return 2 + len(p.Data)
+	return p.ID.len() + len(p.Data)
 }
 
 type PacketPayload []byte
@@ -142,8 +180,7 @@ func MarshalSmallPacket(w io.Writer, p *RawPacket) (err error) {
 	crc := NewCRC8()
 	mw := io.MultiWriter(w, crc)
 	binWrite(mw, byte(p.Length()))
-	binWrite(mw, byte(p.ID.LingoID()))
-	binWrite(mw, byte(p.ID.CmdID()))
+	marshalLingoCmdID(mw, p.ID)
 	binWrite(mw, p.Data)
 
 	binWrite(w, crc.Sum8())
@@ -175,9 +212,12 @@ func UnmarshalSmallPacket(r io.Reader, p *RawPacket) (err error) {
 		return errors.New("small Packet: crc mismatch")
 	}
 
+	payloadBuf := bytes.NewBuffer(payloadData)
+	var id LingoCmdID
+	unmarshalLingoCmdID(payloadBuf, &id)
 	*p = RawPacket{
-		ID:   NewLingoCmdID(payloadData[0], payloadData[1]),
-		Data: payloadData[2:],
+		ID:   id,
+		Data: payloadBuf.Bytes(),
 	}
 	return
 
@@ -199,8 +239,7 @@ func MarshalLargePacket(w io.Writer, p *RawPacket) (err error) {
 	crc := NewCRC8()
 	mw := io.MultiWriter(w, crc)
 	binWrite(mw, uint16(p.Length()))
-	binWrite(mw, byte(p.ID.LingoID()))
-	binWrite(mw, byte(p.ID.CmdID()))
+	marshalLingoCmdID(mw, p.ID)
 	binWrite(mw, p.Data)
 
 	binWrite(w, crc.Sum8())
@@ -239,9 +278,13 @@ func UnmarshalLargePacket(r io.Reader, p *RawPacket) (err error) {
 		return errors.New("large Packet: crc mismatch")
 	}
 
+	payloadBuf := bytes.NewBuffer(payloadData)
+	var id LingoCmdID
+	unmarshalLingoCmdID(payloadBuf, &id)
+
 	*p = RawPacket{
-		ID:   NewLingoCmdID(payloadData[0], payloadData[1]),
-		Data: payloadData[2:],
+		ID:   id,
+		Data: payloadBuf.Bytes(),
 	}
 	return nil
 

@@ -204,7 +204,7 @@ func TestUnmarshalPacket(t *testing.T) {
 }
 
 // func TestPacketPrint(t *testing.T) {
-// 	p := Packet{LingoID: Lingo0General, CmdID: CmdRequestIdentify, Data: []byte{0xff}}
+// 	p := ipod.Packet{ID: ipod.NewLingoCmdID(0x03, 0x0002), Payload: []byte{0xff}}
 
 // 	t.Logf("val: string (%%s): %s", p)
 // 	t.Logf("ptr: string (%%s): %s", &p)
@@ -214,7 +214,5 @@ func TestUnmarshalPacket(t *testing.T) {
 // 	t.Logf("ptr: value+fields (%%+v): %+v", &p)
 // 	t.Logf("val: go-syntax (%%#v): %#v", p)
 // 	t.Logf("ptr: go-syntax (%%#v): %#v", &p)
-
-// 	t.Logf("enum %v", LingoCmdID(0x00))
 
 // }

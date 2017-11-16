@@ -6,9 +6,9 @@ import (
 	"strconv"
 )
 
-func parseIdTag(tag *reflect.StructTag) (uint8, error) {
-	id, err := strconv.ParseUint(tag.Get("id"), 0, 8)
-	return uint8(id), err
+func parseIdTag(tag *reflect.StructTag) (uint16, error) {
+	id, err := strconv.ParseUint(tag.Get("id"), 0, 16)
+	return uint16(id), err
 }
 
 var mIDToType = make(map[LingoCmdID][]reflect.Type)
@@ -32,7 +32,7 @@ func RegisterLingos(lingoID uint8, m interface{}) {
 		}
 		//log.Printf("  %s %#02x %#02x", cmdName, lingoID, cmdID)
 
-		storeMapping(NewLingoCmdID(lingoID, cmdID), cmd.Type)
+		storeMapping(NewLingoCmdID(uint16(lingoID), cmdID), cmd.Type)
 	}
 
 }

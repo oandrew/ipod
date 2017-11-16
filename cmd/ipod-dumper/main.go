@@ -6,7 +6,9 @@ import (
 
 	"git.andrewo.pw/andrew/ipod"
 	"git.andrewo.pw/andrew/ipod/hid"
+	_ "git.andrewo.pw/andrew/ipod/lingo-extremote"
 	"git.andrewo.pw/andrew/ipod/lingo-general"
+	_ "git.andrewo.pw/andrew/ipod/lingo-simpleremote"
 )
 
 func main() {
