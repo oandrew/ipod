@@ -4,8 +4,12 @@ import (
 	"log"
 	"os"
 
+	"git.andrewo.pw/andrew/ipod/lingo-extremote"
+	"git.andrewo.pw/andrew/ipod/lingo-simpleremote"
+
 	"git.andrewo.pw/andrew/ipod"
 	"git.andrewo.pw/andrew/ipod/hid"
+	"git.andrewo.pw/andrew/ipod/lingo-audio"
 	_ "git.andrewo.pw/andrew/ipod/lingo-extremote"
 	"git.andrewo.pw/andrew/ipod/lingo-general"
 	_ "git.andrewo.pw/andrew/ipod/lingo-simpleremote"
@@ -39,8 +43,19 @@ func main() {
 		// buf := bytes.Buffer{}
 		// ipod.NewRawPacketWriter(&buf).WritePacket(packet)
 		// log.Printf("encoded again: [% 02x]", buf.Bytes())
-
-		general.HandleGeneral(packet, packetRW, devGeneral)
+		switch packet.ID.LingoID() {
+		case general.LingoGeneralID:
+			general.HandleGeneral(packet, packetRW, devGeneral)
+			if _, ok := packet.Payload.(general.RetDevAuthenticationSignature); ok {
+				audio.Start(packetRW)
+			}
+		case simpleremote.LingoSimpleRemotelID:
+			//general.HandleGeneral(packet, packetRW, devGeneral)
+		case extremote.LingoExtRemotelID:
+			extremote.HandleExtRemote(packet, packetRW, nil)
+		case audio.LingoAudioID:
+			audio.HandleAudio(packet, packetRW, nil)
+		}
 
 	}
 }

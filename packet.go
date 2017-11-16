@@ -17,7 +17,8 @@ type Packet struct {
 }
 
 func (p Packet) WithTransaction(t uint16) Packet {
-	*p.Transaction = Transaction(t)
+	tr := Transaction(t)
+	p.Transaction = &tr
 	return p
 }
 

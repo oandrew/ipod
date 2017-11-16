@@ -31,11 +31,22 @@ func (d *DevGeneral) SerialNum() string {
 }
 
 func (d *DevGeneral) LingoProtocolVersion(lingo uint8) (major uint8, minor uint8) {
-	return 1, 0
+	switch lingo {
+	case 0x0a:
+		return 1, 3
+	default:
+		return 1, 0
+	}
 }
 
-func (d *DevGeneral) LingoOptions(ling uint8) uint64 {
-	return 0
+func (d *DevGeneral) LingoOptions(lingo uint8) uint64 {
+	switch lingo {
+	case 0x00:
+		return 0x000000063DEF73FF
+
+	default:
+		return 0
+	}
 }
 
 func (d *DevGeneral) PrefSettingID(classID uint8) uint8 {
