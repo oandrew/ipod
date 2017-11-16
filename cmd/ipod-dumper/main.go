@@ -38,11 +38,7 @@ func main() {
 		if err != nil {
 			log.Printf("Error: %v", err)
 		}
-		//log.Printf("err: %v packet go-syntax: %#v", err, packet)
-		//log.Printf("packet stringer: %v", packet)
-		// buf := bytes.Buffer{}
-		// ipod.NewRawPacketWriter(&buf).WritePacket(packet)
-		// log.Printf("encoded again: [% 02x]", buf.Bytes())
+
 		switch packet.ID.LingoID() {
 		case general.LingoGeneralID:
 			general.HandleGeneral(packet, packetRW, devGeneral)
@@ -50,7 +46,7 @@ func main() {
 				audio.Start(packetRW)
 			}
 		case simpleremote.LingoSimpleRemotelID:
-			//general.HandleGeneral(packet, packetRW, devGeneral)
+			//todo
 		case extremote.LingoExtRemotelID:
 			extremote.HandleExtRemote(packet, packetRW, nil)
 		case audio.LingoAudioID:
