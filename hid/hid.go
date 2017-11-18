@@ -2,9 +2,6 @@ package hid
 
 import (
 	"bytes"
-	"io"
-
-	"git.andrewo.pw/andrew/ipod"
 )
 
 type Report struct {
@@ -21,79 +18,12 @@ const (
 	LinkControlMoreToFollow LinkControl = 0x02
 )
 
-type ReportReader interface {
-	ReadReport() (Report, error)
-}
-
-type ReportWriter interface {
-	WriteReport(Report) error
-}
-
-type SingleReport []byte
-
-func (s SingleReport) ReadReport() (Report, error) {
-	return Report{
-		ID:          s[0],
-		LinkControl: LinkControl(s[1]),
-		Data:        s[2:],
-	}, nil
-}
-
-const maxRawSize = 1024
-
-type rawReportReader struct {
-	r   io.Reader
-	buf []byte
-}
-
-func (rr *rawReportReader) ReadReport() (Report, error) {
-	n, err := rr.r.Read(rr.buf)
-	if err != nil {
-		return Report{}, err
-	}
-	if n < 3 {
-		return Report{}, io.ErrNoProgress
-	}
-	return Report{
-		ID:          rr.buf[0],
-		LinkControl: LinkControl(rr.buf[1]),
-		Data:        rr.buf[2:n],
-	}, nil
-}
-
-func NewRawReportReader(r io.Reader) ReportReader {
-	return &rawReportReader{
-		r:   r,
-		buf: make([]byte, maxRawSize),
-	}
-}
-
-type rawReportWriter struct {
-	w   io.Writer
-	buf bytes.Buffer
-}
-
-func (rw *rawReportWriter) WriteReport(report Report) error {
-	rw.buf.Reset()
-	rw.buf.WriteByte(report.ID)
-	rw.buf.WriteByte(byte(report.LinkControl))
-	rw.buf.Write(report.Data)
-	_, err := rw.buf.WriteTo(rw.w)
-	return err
-}
-
-func NewRawReportWriter(w io.Writer) ReportWriter {
-	return &rawReportWriter{
-		w: w,
-	}
-}
-
-type hidEncoder struct {
+type Encoder struct {
 	reportDefs ReportDefs
 	w          ReportWriter
 }
 
-func (e *hidEncoder) WriteFrame(data []byte) error {
+func (e *Encoder) WriteFrame(data []byte) error {
 	offset := 0
 	bytesLeft := len(data)
 	for bytesLeft > 0 {
@@ -130,23 +60,23 @@ func (e *hidEncoder) WriteFrame(data []byte) error {
 
 }
 
-func NewEncoder(w ReportWriter, defs ReportDefs) ipod.TransportEncoder {
-	return &hidEncoder{
+func NewEncoder(w ReportWriter, defs ReportDefs) *Encoder {
+	return &Encoder{
 		reportDefs: defs,
 		w:          w,
 	}
 }
 
-func NewEncoderDefault(w ReportWriter) ipod.TransportEncoder {
+func NewEncoderDefault(w ReportWriter) *Encoder {
 	return NewEncoder(w, DefaultReportDefs)
 }
 
-type hidDecoder struct {
+type Decoder struct {
 	reportDefs ReportDefs
 	r          ReportReader
 }
 
-func (e *hidDecoder) ReadFrame() ([]byte, error) {
+func (e *Decoder) ReadFrame() ([]byte, error) {
 	buf := bytes.Buffer{}
 	done := false
 	for !done {
@@ -179,13 +109,13 @@ func (e *hidDecoder) ReadFrame() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func NewDecoder(r ReportReader, defs ReportDefs) ipod.TransportDecoder {
-	return &hidDecoder{
+func NewDecoder(r ReportReader, defs ReportDefs) *Decoder {
+	return &Decoder{
 		r:          r,
 		reportDefs: defs,
 	}
 }
 
-func NewDecoderDefault(r ReportReader) ipod.TransportDecoder {
+func NewDecoderDefault(r ReportReader) *Decoder {
 	return NewDecoder(r, DefaultReportDefs)
 }

@@ -2,7 +2,6 @@ package general
 
 import (
 	"bytes"
-	"log"
 
 	"git.andrewo.pw/andrew/ipod"
 )
@@ -83,7 +82,6 @@ func ackFIDTokens(tokens SetFIDTokenValues) RetFIDTokenValueACKs {
 }
 
 func HandleGeneral(req ipod.Packet, tr ipod.PacketWriter, dev DeviceGeneral) error {
-	log.Printf("Req: %#v", req)
 	switch msg := req.Payload.(type) {
 	case RequestRemoteUIMode:
 		ipod.Respond(req, tr, ReturnRemoteUIMode{
@@ -188,7 +186,6 @@ func HandleGeneral(req ipod.Packet, tr ipod.PacketWriter, dev DeviceGeneral) err
 		dev.StartIDPS()
 		ipod.Respond(req, tr, ackSuccess(req))
 	case SetFIDTokenValues:
-		log.Printf("set fid token!")
 		ipod.Respond(req, tr, ackFIDTokens(msg))
 	case EndIDPS:
 		switch msg.AccEndIDPSStatus {

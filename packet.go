@@ -43,66 +43,14 @@ func Respond(req Packet, pw PacketWriter, payload interface{}) {
 	pw.WritePacket(p)
 }
 
-type LingoCmdID uint32
-
-func (id LingoCmdID) LingoID() uint16 {
-	return uint16(id >> 16 & 0xffff)
-}
-
-func (id LingoCmdID) CmdID() uint16 {
-	return uint16(id & 0xffff)
-}
-
-func (id LingoCmdID) GoString() string {
-	return fmt.Sprintf("(%#02x|%#0*x)", id.LingoID(), cmdIDLen(id.LingoID())*2, id.CmdID())
-}
-
-func (id LingoCmdID) len() int {
-	return 1 + cmdIDLen(id.LingoID())
-}
-
-func cmdIDLen(lingoID uint16) int {
-	switch lingoID {
-	case 0x04:
-		return 2
-	default:
-		return 1
-	}
-}
-
-func marshalLingoCmdID(w io.Writer, id LingoCmdID) {
-	binWrite(w, byte(id.LingoID()))
-	switch cmdIDLen(id.LingoID()) {
-	case 2:
-		binWrite(w, uint16(id.CmdID()))
-	default:
-		binWrite(w, byte(id.CmdID()))
-	}
-}
-
-func unmarshalLingoCmdID(r io.Reader, id *LingoCmdID) {
-	var lingoID byte
-	binRead(r, &lingoID)
-	switch cmdIDLen(uint16(lingoID)) {
-	case 2:
-		var cmdID uint16
-		binRead(r, &cmdID)
-		*id = NewLingoCmdID(uint16(lingoID), uint16(cmdID))
-	default:
-		var cmdID uint8
-		binRead(r, &cmdID)
-		*id = NewLingoCmdID(uint16(lingoID), uint16(cmdID))
-	}
-}
-
-func NewLingoCmdID(lingo, cmd uint16) LingoCmdID {
-	return LingoCmdID(uint32(lingo)<<16 | uint32(cmd))
-}
-
 type Transaction uint16
 
 func (tr Transaction) GoString() string {
 	return fmt.Sprintf("%#04x", tr)
+}
+
+func (tr Transaction) String() string {
+	return fmt.Sprintf("%#04x", uint16(tr))
 }
 
 type PayloadUnmarshaler interface {
@@ -139,6 +87,14 @@ type PacketPayload []byte
 
 func (pp PacketPayload) String() string {
 	return fmt.Sprintf("(%d)[% 02x]", len([]byte(pp)), []byte(pp))
+}
+
+type PayloadStringer struct {
+	P interface{}
+}
+
+func (ps PayloadStringer) String() string {
+	return fmt.Sprintf("%+v", ps.P)
 }
 
 const (
@@ -299,7 +255,6 @@ func MarshalPacket(w io.Writer, p *Packet) (err error) {
 		binWrite(&payloadBuf, *p.Transaction)
 	}
 	if d, ok := p.Payload.(PayloadMarshaler); ok {
-		//log.Printf("Custom PayloadMarshaler")
 		if err := d.MarshalPayload(&payloadBuf); err != nil {
 			return err
 		}
@@ -356,8 +311,6 @@ func UnmarshalPacket(r io.Reader, pp *Packet) (err error) {
 		return fmt.Errorf("id/size not found: %#v", p)
 	}
 
-	//log.Printf("lookup: %#v", lookup)
-
 	pp.ID = p.ID
 	dr := bytes.NewReader(p.Data)
 	if lookup.Transaction {
@@ -368,7 +321,6 @@ func UnmarshalPacket(r io.Reader, pp *Packet) (err error) {
 
 	if d, ok := lookup.Payload.(PayloadUnmarshaler); ok {
 		if err := d.UnmarshalPayload(dr); err != nil {
-			//log.Print(err)
 			return err
 		}
 
@@ -376,21 +328,6 @@ func UnmarshalPacket(r io.Reader, pp *Packet) (err error) {
 		binRead(dr, lookup.Payload)
 	}
 	pp.Payload = reflect.ValueOf(lookup.Payload).Elem().Interface()
-	//log.Printf("%#v", pp)
 	return nil
 
-}
-
-type RawPacketWriter struct {
-	w io.Writer
-}
-
-func (rpw *RawPacketWriter) WritePacket(pkt Packet) error {
-	return MarshalPacket(rpw.w, &pkt)
-}
-
-func NewRawPacketWriter(w io.Writer) PacketWriter {
-	return &RawPacketWriter{
-		w: w,
-	}
 }

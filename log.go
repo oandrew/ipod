@@ -1,38 +1,44 @@
 package ipod
 
 import (
-	"io"
-	"log"
+	"fmt"
+
+	"github.com/davecgh/go-spew/spew"
+
+	"github.com/sirupsen/logrus"
 )
 
-type loggingPacketReadWriter struct {
-	r      PacketReader
-	w      PacketWriter
-	logger *log.Logger
+type LoggingPacketReadWriter struct {
+	RW PacketReadWriter
+	L  *logrus.Logger
 }
 
-func (lprw *loggingPacketReadWriter) ReadPacket() (Packet, error) {
-	pkt, err := lprw.r.ReadPacket()
-	lprw.logger.Printf("RECV %#+v", pkt)
+func packetLogEntry(e *logrus.Entry, pkt Packet) *logrus.Entry {
+	return e.WithFields(logrus.Fields{
+		"id":   pkt.ID,
+		"trx":  pkt.Transaction,
+		"type": fmt.Sprintf("%T", pkt.Payload),
+	})
+}
+
+func (lprw *LoggingPacketReadWriter) ReadPacket() (pkt Packet, err error) {
+	pkt, err = lprw.RW.ReadPacket()
+	entry := packetLogEntry(logrus.NewEntry(lprw.L), pkt)
 	if err != nil {
-		lprw.logger.Printf("RECV ERR: %v", err)
+		entry.WithError(err).Errorf("recv error")
+		return
 	}
-	return pkt, err
+	entry.Debugf("packet recv\n%s", spew.Sdump(pkt.Payload))
+	return
 }
 
-func (lprw *loggingPacketReadWriter) WritePacket(pkt Packet) error {
-	lprw.logger.Printf("SEND %#+v", pkt)
-	err := lprw.w.WritePacket(pkt)
+func (lprw *LoggingPacketReadWriter) WritePacket(pkt Packet) (err error) {
+	err = lprw.RW.WritePacket(pkt)
+	entry := packetLogEntry(logrus.NewEntry(lprw.L), pkt)
 	if err != nil {
-		lprw.logger.Printf("SEND ERR: %v", err)
+		entry.WithError(err).Errorf("send error")
+		return
 	}
-	return err
-}
-
-func NewLoggingPacketReadWriter(r PacketReader, w PacketWriter, logw io.Writer) PacketReadWriter {
-	return &loggingPacketReadWriter{
-		r:      r,
-		w:      w,
-		logger: log.New(logw, "log>", log.Ldate|log.Ltime|log.Lmicroseconds),
-	}
+	entry.Debugf("packet send\n%s", spew.Sdump(pkt.Payload))
+	return
 }

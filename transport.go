@@ -3,24 +3,33 @@ package ipod
 import (
 	"bytes"
 	"io"
-	"log"
 )
 
-type Transport interface {
-	Send(p *Packet)
-	MaxPayload() uint16
-}
-
-type TransportEncoder interface {
-	WriteFrame(data []byte) error
-}
-
-type TransportDecoder interface {
+type TransportReader interface {
 	ReadFrame() ([]byte, error)
 }
 
+type TransportWriter interface {
+	WriteFrame(data []byte) error
+}
+
+type Transport struct {
+	TransportReader
+	TransportWriter
+}
+
+type DummyTransport struct{}
+
+func (d *DummyTransport) ReadFrame() ([]byte, error) {
+	return []byte{}, nil
+}
+
+func (d *DummyTransport) WriteFrame([]byte) error {
+	return nil
+}
+
 type transportPacketReader struct {
-	tr TransportDecoder
+	tr TransportReader
 	r  *bytes.Reader
 }
 
@@ -32,10 +41,10 @@ func (tpr *transportPacketReader) ReadPacket() (Packet, error) {
 			if err != nil {
 				return Packet{}, err
 			}
-			log.Printf("frame: [% 02x]", frame)
+			//log.Printf("frame: [% 02x]", frame)
 			tpr.r = bytes.NewReader(frame)
 		}
-		log.Printf("leftover: %d", tpr.r.Len())
+		//log.Printf("leftover: %d", tpr.r.Len())
 		var pkt Packet
 		err := UnmarshalPacket(tpr.r, &pkt)
 		if err == io.EOF {
@@ -46,7 +55,7 @@ func (tpr *transportPacketReader) ReadPacket() (Packet, error) {
 
 }
 
-func NewTransportPacketReader(tr TransportDecoder) PacketReader {
+func NewPacketReader(tr TransportReader) PacketReader {
 	return &transportPacketReader{
 		tr: tr,
 	}
@@ -54,7 +63,7 @@ func NewTransportPacketReader(tr TransportDecoder) PacketReader {
 }
 
 type transportPacketWriter struct {
-	tr TransportEncoder
+	tr TransportWriter
 }
 
 func (tpw *transportPacketWriter) WritePacket(pkt Packet) error {
@@ -66,8 +75,21 @@ func (tpw *transportPacketWriter) WritePacket(pkt Packet) error {
 
 }
 
-func NewTransportPacketWriter(tr TransportEncoder) PacketWriter {
+func NewPacketWriter(tr TransportWriter) PacketWriter {
 	return &transportPacketWriter{
 		tr: tr,
 	}
+}
+
+type packetRW struct {
+	PacketReader
+	PacketWriter
+}
+
+func NewPacketReadWriter(tr *Transport) PacketReadWriter {
+	return packetRW{
+		NewPacketReader(tr),
+		NewPacketWriter(tr),
+	}
+
 }

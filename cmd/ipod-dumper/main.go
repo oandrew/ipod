@@ -1,8 +1,12 @@
 package main
 
 import (
-	"log"
+	"flag"
+	"io"
+
 	"os"
+
+	"github.com/sirupsen/logrus"
 
 	"git.andrewo.pw/andrew/ipod/lingo-extremote"
 	"git.andrewo.pw/andrew/ipod/lingo-simpleremote"
@@ -15,28 +19,45 @@ import (
 	_ "git.andrewo.pw/andrew/ipod/lingo-simpleremote"
 )
 
+var devicePath = flag.String("device", "/dev/iap0", "iap char device path")
+
+var log = logrus.StandardLogger()
+
 func main() {
-	p := "/dev/iap0"
-	if len(os.Args) > 1 {
-		p = os.Args[1]
-	}
-	f, err := os.OpenFile(p, os.O_RDWR, os.ModePerm)
+	flag.Parse()
+
+	log.SetLevel(logrus.DebugLevel)
+	log.Formatter = &logrus.TextFormatter{}
+
+	log.Debugf("Registered lingos:\n%s", ipod.DumpLingos())
+
+	dev, err := os.OpenFile(*devicePath, os.O_RDWR, os.ModePerm)
 	if err != nil {
-		log.Fatal(err)
+		log.WithError(err).Fatalf("Coult not open device %s", *devicePath)
 	}
 
-	reportReader, reportWriter := hid.NewRawReportReader(f), hid.NewRawReportWriter(f)
-	hidDecoder, hidEncoder := hid.NewDecoderDefault(reportReader), hid.NewEncoderDefault(reportWriter)
-	packetReader, packetWriter := ipod.NewTransportPacketReader(hidDecoder), ipod.NewTransportPacketWriter(hidEncoder)
+	log.Infof("Device %s opened", *devicePath)
+
+	reportTransport := hid.NewCharDevReportTransport(dev)
+	rw := ipod.NewPacketReadWriter(&ipod.Transport{
+		TransportReader: hid.NewDecoder(reportTransport, hid.DefaultReportDefs),
+		TransportWriter: hid.NewEncoder(reportTransport, hid.DefaultReportDefs),
+	})
+	packetRW := &ipod.LoggingPacketReadWriter{
+		RW: rw,
+		L:  log,
+	}
 
 	devGeneral := &DevGeneral{}
-
-	packetRW := ipod.NewLoggingPacketReadWriter(packetReader, packetWriter, os.Stderr)
 
 	for {
 		packet, err := packetRW.ReadPacket()
 		if err != nil {
-			log.Printf("Error: %v", err)
+			if err == io.EOF {
+				break
+			} else {
+				log.Error(err)
+			}
 		}
 
 		switch packet.ID.LingoID() {

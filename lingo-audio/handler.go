@@ -1,8 +1,6 @@
 package audio
 
 import (
-	"log"
-
 	"git.andrewo.pw/andrew/ipod"
 )
 
@@ -25,7 +23,6 @@ func Start(tr ipod.PacketWriter) {
 }
 
 func HandleAudio(req ipod.Packet, tr ipod.PacketWriter, dev DeviceAudio) error {
-	log.Printf("Req: %#v", req)
 	switch msg := req.Payload.(type) {
 	case AccAck:
 	case RetAccSampleRateCaps:
