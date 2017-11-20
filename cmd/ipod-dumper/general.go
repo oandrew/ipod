@@ -19,7 +19,7 @@ func (d *DevGeneral) SetUIMode(mode general.UIMode) {
 }
 
 func (d *DevGeneral) Name() string {
-	return "Andrew"
+	return "ipod-gadget"
 }
 
 func (d *DevGeneral) SoftwareVersion() (major uint8, minor uint8, rev uint8) {

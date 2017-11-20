@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 
-	"git.andrewo.pw/andrew/ipod/lingo-dispremote"
-
 	"os"
 
 	"github.com/sirupsen/logrus"
@@ -14,6 +12,7 @@ import (
 	"git.andrewo.pw/andrew/ipod"
 	"git.andrewo.pw/andrew/ipod/hid"
 	"git.andrewo.pw/andrew/ipod/lingo-audio"
+	"git.andrewo.pw/andrew/ipod/lingo-dispremote"
 	"git.andrewo.pw/andrew/ipod/lingo-extremote"
 	"git.andrewo.pw/andrew/ipod/lingo-general"
 	"git.andrewo.pw/andrew/ipod/lingo-simpleremote"
