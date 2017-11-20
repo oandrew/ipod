@@ -5,19 +5,18 @@ import (
 	"fmt"
 	"io"
 
+	"git.andrewo.pw/andrew/ipod/lingo-dispremote"
+
 	"os"
 
 	"github.com/sirupsen/logrus"
 
-	"git.andrewo.pw/andrew/ipod/lingo-extremote"
-	"git.andrewo.pw/andrew/ipod/lingo-simpleremote"
-
 	"git.andrewo.pw/andrew/ipod"
 	"git.andrewo.pw/andrew/ipod/hid"
 	"git.andrewo.pw/andrew/ipod/lingo-audio"
-	_ "git.andrewo.pw/andrew/ipod/lingo-extremote"
+	"git.andrewo.pw/andrew/ipod/lingo-extremote"
 	"git.andrewo.pw/andrew/ipod/lingo-general"
-	_ "git.andrewo.pw/andrew/ipod/lingo-simpleremote"
+	"git.andrewo.pw/andrew/ipod/lingo-simpleremote"
 )
 
 var devicePath = flag.String("d", "", "iap device")
@@ -115,6 +114,8 @@ func main() {
 			}
 		case simpleremote.LingoSimpleRemotelID:
 			//todo
+		case dispremote.LingoDisplayRemoteID:
+			dispremote.HandleDispRemote(packet, packetRW, nil)
 		case extremote.LingoExtRemotelID:
 			extremote.HandleExtRemote(packet, packetRW, nil)
 		case audio.LingoAudioID:
