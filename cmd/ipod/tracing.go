@@ -57,7 +57,7 @@ func (t *untracingReadWriter) Read(p []byte) (n int, err error) {
 			continue
 		}
 		h := strings.Join(strings.Split(line[2:], " "), "")
-		log.Debug(h)
+		//log.Debug(h)
 		data, err := hex.DecodeString(h)
 		if err != nil {
 			return 0, err
