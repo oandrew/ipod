@@ -5,31 +5,36 @@ import (
 	"io"
 )
 
-type TransportReader interface {
+type FrameReader interface {
 	ReadFrame() ([]byte, error)
 }
 
-type TransportWriter interface {
+type FrameWriter interface {
 	WriteFrame(data []byte) error
 }
 
-type Transport struct {
-	TransportReader
-	TransportWriter
+type FrameReadWriter interface {
+	FrameReader
+	FrameWriter
 }
 
-type DummyTransport struct{}
+// type Transport struct {
+// 	TransportReader
+// 	TransportWriter
+// }
 
-func (d *DummyTransport) ReadFrame() ([]byte, error) {
+type DummyFrameReadWriter struct{}
+
+func (d *DummyFrameReadWriter) ReadFrame() ([]byte, error) {
 	return []byte{}, nil
 }
 
-func (d *DummyTransport) WriteFrame([]byte) error {
+func (d *DummyFrameReadWriter) WriteFrame([]byte) error {
 	return nil
 }
 
 type transportPacketReader struct {
-	tr TransportReader
+	tr FrameReader
 	r  *bytes.Reader
 }
 
@@ -55,7 +60,7 @@ func (tpr *transportPacketReader) ReadPacket() (Packet, error) {
 
 }
 
-func NewPacketReader(tr TransportReader) PacketReader {
+func NewPacketReader(tr FrameReader) PacketReader {
 	return &transportPacketReader{
 		tr: tr,
 	}
@@ -63,7 +68,7 @@ func NewPacketReader(tr TransportReader) PacketReader {
 }
 
 type transportPacketWriter struct {
-	tr TransportWriter
+	tr FrameWriter
 }
 
 func (tpw *transportPacketWriter) WritePacket(pkt Packet) error {
@@ -75,7 +80,7 @@ func (tpw *transportPacketWriter) WritePacket(pkt Packet) error {
 
 }
 
-func NewPacketWriter(tr TransportWriter) PacketWriter {
+func NewPacketWriter(tr FrameWriter) PacketWriter {
 	return &transportPacketWriter{
 		tr: tr,
 	}
@@ -86,10 +91,10 @@ type packetRW struct {
 	PacketWriter
 }
 
-func NewPacketReadWriter(tr *Transport) PacketReadWriter {
-	return packetRW{
-		NewPacketReader(tr),
-		NewPacketWriter(tr),
+func NewPacketTransport(tr FrameReadWriter) PacketReadWriter {
+	return &packetRW{
+		PacketReader: NewPacketReader(tr),
+		PacketWriter: NewPacketWriter(tr),
 	}
 
 }

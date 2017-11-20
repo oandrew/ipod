@@ -13,7 +13,7 @@ type ReportWriter interface {
 	WriteReport(Report) error
 }
 
-type ReportTransport interface {
+type ReportReadWriter interface {
 	ReportReader
 	ReportWriter
 }
@@ -77,7 +77,7 @@ func NewRawReportWriter(w io.Writer) ReportWriter {
 	}
 }
 
-func NewCharDevReportTransport(rw io.ReadWriter) ReportTransport {
+func NewCharDevReportTransport(rw io.ReadWriter) ReportReadWriter {
 	return struct {
 		ReportReader
 		ReportWriter

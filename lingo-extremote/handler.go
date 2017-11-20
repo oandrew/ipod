@@ -1,8 +1,6 @@
 package extremote
 
 import (
-	"log"
-
 	"git.andrewo.pw/andrew/ipod"
 )
 
@@ -19,7 +17,7 @@ func ackSuccess(req ipod.Packet) ACK {
 // }
 
 func HandleExtRemote(req ipod.Packet, tr ipod.PacketWriter, dev DeviceExtRemote) error {
-	log.Printf("Req: %#v", req)
+	//log.Printf("Req: %#v", req)
 	switch msg := req.Payload.(type) {
 
 	case GetCurrentPlayingTrackChapterInfo:

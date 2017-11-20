@@ -119,3 +119,15 @@ func NewDecoder(r ReportReader, defs ReportDefs) *Decoder {
 func NewDecoderDefault(r ReportReader) *Decoder {
 	return NewDecoder(r, DefaultReportDefs)
 }
+
+type Transport struct {
+	*Decoder
+	*Encoder
+}
+
+func NewTransport(rw ReportReadWriter, defs ReportDefs) *Transport {
+	return &Transport{
+		Decoder: NewDecoder(rw, defs),
+		Encoder: NewEncoder(rw, defs),
+	}
+}

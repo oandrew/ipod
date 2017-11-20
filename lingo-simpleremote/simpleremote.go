@@ -35,7 +35,7 @@ var Lingos struct {
 }
 
 type ContextButtonStatus struct {
-	ButtonStates uint16 // add optional
+	ButtonStates uint8 // add optional
 }
 
 type ACK struct{}

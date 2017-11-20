@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io"
 
 	"os"
@@ -19,32 +20,78 @@ import (
 	_ "git.andrewo.pw/andrew/ipod/lingo-simpleremote"
 )
 
-var devicePath = flag.String("device", "/dev/iap0", "iap char device path")
+var devicePath = flag.String("d", "", "iap device")
+var readTracePath = flag.String("r", "", "Read traces from a file instead of device")
+var writeTracePath = flag.String("w", "", "Save traces to a file")
+
+var verbose = flag.Bool("v", false, "Enable verbose logging")
 
 var log = logrus.StandardLogger()
 
+func open() io.ReadWriter {
+	if *readTracePath != "" {
+		f, err := os.Open(*readTracePath)
+		e := log.WithField("path", *readTracePath)
+		if err != nil {
+			e.WithError(err).Fatalf("Couldn't open the trace file")
+		}
+		e.Warningf("Using trace file")
+		return NewLoadTraceReadWriter(f)
+
+	} else if *devicePath != "" {
+		dev, err := os.OpenFile(*devicePath, os.O_RDWR, os.ModePerm)
+		e := log.WithField("path", *devicePath)
+		if err != nil {
+			e.WithError(err).Fatalf("Couldn't not open the device")
+		}
+		stat, _ := dev.Stat()
+		if stat.Mode()&os.ModeCharDevice != os.ModeCharDevice {
+			e.Fatalf("Not a device")
+		}
+		e.Infof("Device opened")
+		return dev
+	}
+	return nil
+}
+
 func main() {
 	flag.Parse()
+	if *readTracePath == "" && *devicePath == "" || *readTracePath != "" && *devicePath != "" {
+		fmt.Fprintf(os.Stderr, "Specify either a device or a trace file\n\n")
+		flag.Usage()
+		os.Exit(2)
 
-	log.SetLevel(logrus.DebugLevel)
+	}
+
+	if *verbose {
+		log.SetLevel(logrus.DebugLevel)
+	}
 	log.Formatter = &logrus.TextFormatter{}
 
 	log.Debugf("Registered lingos:\n%s", ipod.DumpLingos())
 
-	dev, err := os.OpenFile(*devicePath, os.O_RDWR, os.ModePerm)
-	if err != nil {
-		log.WithError(err).Fatalf("Coult not open device %s", *devicePath)
+	f := open()
+	if *writeTracePath != "" {
+		traceFile, err := os.OpenFile(*writeTracePath, os.O_RDWR|os.O_CREATE, os.ModePerm)
+		if err != nil {
+			log.WithError(err).Fatal("Couldn't open the save trace file")
+		}
+		f = &tracingReadWriter{
+			r:     f,
+			w:     f,
+			trace: traceFile,
+		}
+	}
+	hidReportTransport := hid.NewCharDevReportTransport(f)
+	frameTransport := hid.NewTransport(hidReportTransport, hid.DefaultReportDefs)
+	logFrameTransport := &ipod.LoggingFrameReadWriter{
+		RW: frameTransport,
+		L:  log,
 	}
 
-	log.Infof("Device %s opened", *devicePath)
-
-	reportTransport := hid.NewCharDevReportTransport(dev)
-	rw := ipod.NewPacketReadWriter(&ipod.Transport{
-		TransportReader: hid.NewDecoder(reportTransport, hid.DefaultReportDefs),
-		TransportWriter: hid.NewEncoder(reportTransport, hid.DefaultReportDefs),
-	})
+	packetTransport := ipod.NewPacketTransport(logFrameTransport)
 	packetRW := &ipod.LoggingPacketReadWriter{
-		RW: rw,
+		RW: packetTransport,
 		L:  log,
 	}
 
