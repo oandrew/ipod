@@ -18,7 +18,7 @@ import (
 	"git.andrewo.pw/andrew/ipod/lingo-simpleremote"
 )
 
-var devicePath = flag.String("d", "", "iap device")
+var devicePath = flag.String("d", "", "iap device i.e. /dev/iap0")
 var readTracePath = flag.String("r", "", "Respond to requests  from a trace file instead of device")
 var writeTracePath = flag.String("w", "", "Save traces to a file")
 
