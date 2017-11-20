@@ -1,3 +1,4 @@
+// Package hid implements iap over hid transport
 package hid
 
 import (

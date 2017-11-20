@@ -8,6 +8,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// LoggingPacketReadWriter is a PacketReadWriter
+// that logs packets to L
 type LoggingPacketReadWriter struct {
 	RW PacketReadWriter
 	L  *logrus.Logger
@@ -50,6 +52,8 @@ func (lprw *LoggingPacketReadWriter) WritePacket(pkt Packet) (err error) {
 	return
 }
 
+// LoggingFrameReadWriter is a FrameReadWriter
+// that logs frames to L
 type LoggingFrameReadWriter struct {
 	RW FrameReadWriter
 	L  *logrus.Logger

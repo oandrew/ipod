@@ -5,26 +5,36 @@ import (
 	"fmt"
 )
 
+// ReportDir is the report direction
 type ReportDir uint8
 
 const (
-	ReportDirAccIn  ReportDir = 0
+	// Device to host (ipod->accessory)
+	ReportDirAccIn ReportDir = 0
+	// Host to device (accessory->ipod)
 	ReportDirAccOut ReportDir = 1
 )
 
+// ReportDef represents a hid report type from the descriptor
 type ReportDef struct {
-	ID  int
+	// id
+	ID int
+	// lenth of the report not including the id.
 	Len int
+	// direction
 	Dir ReportDir
 }
 
+// MaxPayload returns the maximum payload that a report can fit
 func (def ReportDef) MaxPayload() int {
 	return def.Len - 1
 }
 
-// Sorted list of reports
+// ReportDefs is a collection of ReportDef
 type ReportDefs []ReportDef
 
+// DefaultReportDefs is a default set of report types
+// for use with ipod-gadget
 var DefaultReportDefs = ReportDefs{
 	ReportDef{ID: 0x01, Len: 5, Dir: ReportDirAccIn},
 	ReportDef{ID: 0x02, Len: 9, Dir: ReportDirAccIn},
@@ -50,6 +60,7 @@ var DefaultReportDefs = ReportDefs{
 	ReportDef{ID: 0x15, Len: 255, Dir: ReportDirAccOut},
 }
 
+// Pick finds the best matching report type
 func (defs ReportDefs) Pick(payloadSize int, dir ReportDir) (ReportDef, error) {
 	var def *ReportDef
 
@@ -69,6 +80,7 @@ func (defs ReportDefs) Pick(payloadSize int, dir ReportDir) (ReportDef, error) {
 	}
 }
 
+// Find finds the report type based on id
 func (defs ReportDefs) Find(id int) (ReportDef, error) {
 	for i := range defs {
 		if defs[i].ID == id {

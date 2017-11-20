@@ -9,6 +9,7 @@ import (
 	"strconv"
 )
 
+// LingoCmdID represents Lingo ID and Command ID
 type LingoCmdID uint32
 
 func (id LingoCmdID) LingoID() uint16 {
@@ -82,6 +83,7 @@ func storeMapping(cmd LingoCmdID, t reflect.Type) {
 	mTypeToID[t] = cmd
 }
 
+// RegisterLingos registers a set of lingo commands
 func RegisterLingos(lingoID uint8, m interface{}) error {
 	lingos := reflect.TypeOf(m)
 
@@ -98,6 +100,7 @@ func RegisterLingos(lingoID uint8, m interface{}) error {
 
 }
 
+// DumpLingos returns a list of all registered lingos and commands
 func DumpLingos() string {
 	type cmd struct {
 		id   LingoCmdID
@@ -118,16 +121,22 @@ func DumpLingos() string {
 
 }
 
+// LookupID finds a registered LingoCmdID by the type of v
+// i.e. reverse to Lookup
 func LookupID(v interface{}) (id LingoCmdID, ok bool) {
 	id, ok = mTypeToID[reflect.TypeOf(v)]
 	return
 }
 
+// LookupResult contains the result of Lookup.
+// Payload is an instance of the corresponding payload type.
+// Transaction specifies if the Transaction should be presend in the packet.
 type LookupResult struct {
 	Payload     interface{}
 	Transaction bool
 }
 
+// Lookup finds a the payload by LingoCmdID using payloadSize as a hint
 func Lookup(id LingoCmdID, payloadSize int) (LookupResult, bool) {
 	payloads, ok := mIDToType[id]
 	if !ok {

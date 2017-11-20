@@ -1,3 +1,4 @@
+// Package ipod implements the iPod Accessory protocol (iap)
 package ipod
 
 import (
@@ -10,6 +11,7 @@ import (
 	"reflect"
 )
 
+// Packet is a decoded iap packet
 type Packet struct {
 	ID          LingoCmdID
 	Transaction *Transaction
@@ -53,10 +55,14 @@ func (tr Transaction) String() string {
 	return fmt.Sprintf("%#04x", uint16(tr))
 }
 
+// PayloadUnmarshaler is the interface implemented by a payload
+// that can unmarshal itself
 type PayloadUnmarshaler interface {
 	UnmarshalPayload(r io.Reader) error
 }
 
+// PayloadMarshaler is the interface implemented by a payload
+// that can marshal itself
 type PayloadMarshaler interface {
 	MarshalPayload(w io.Writer) error
 }
@@ -74,6 +80,7 @@ type PacketReadWriter interface {
 	PacketWriter
 }
 
+// RawPacket is an iap packet with encoded payload
 type RawPacket struct {
 	ID   LingoCmdID
 	Data PacketPayload
