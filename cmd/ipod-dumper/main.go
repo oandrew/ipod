@@ -19,7 +19,7 @@ import (
 )
 
 var devicePath = flag.String("d", "", "iap device")
-var readTracePath = flag.String("r", "", "Read traces from a file instead of device")
+var readTracePath = flag.String("r", "", "Respond to requests  from a trace file instead of device")
 var writeTracePath = flag.String("w", "", "Save traces to a file")
 
 var verbose = flag.Bool("v", false, "Enable verbose logging")
@@ -113,6 +113,7 @@ func main() {
 			}
 		case simpleremote.LingoSimpleRemotelID:
 			//todo
+			log.Warn("Lingo SimpleRemote is not supported yet")
 		case dispremote.LingoDisplayRemoteID:
 			dispremote.HandleDispRemote(packet, packetRW, nil)
 		case extremote.LingoExtRemotelID:
