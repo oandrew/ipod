@@ -25,10 +25,10 @@ GOOS=linux GOARCH=arm GOARM=6 go build github.com/oandrew/ipod/cmd/ipod
 # with verbose logging
 ./ipod -v -d /dev/iap0
 
-# write trace file
+# save a trace file
 ./ipod -v -w ipod.trace -d /dev/iap0
 
-# replay
+# replay a trace file
 ./ipod -v -r ipod.trace
 
 ```
