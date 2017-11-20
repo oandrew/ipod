@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"io"
 
-	"git.andrewo.pw/andrew/ipod"
+	"github.com/oandrew/ipod"
 )
 
 func init() {

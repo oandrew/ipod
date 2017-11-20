@@ -1,7 +1,7 @@
 package main
 
 import (
-	"git.andrewo.pw/andrew/ipod/lingo-general"
+	"github.com/oandrew/ipod/lingo-general"
 )
 
 type DevGeneral struct {

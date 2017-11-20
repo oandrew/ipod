@@ -1,7 +1,7 @@
 package simpleremote
 
 import (
-	"git.andrewo.pw/andrew/ipod"
+	"github.com/oandrew/ipod"
 )
 
 func init() {

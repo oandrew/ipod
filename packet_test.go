@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	"git.andrewo.pw/andrew/ipod"
-	"git.andrewo.pw/andrew/ipod/lingo-general"
+	"github.com/oandrew/ipod"
+	"github.com/oandrew/ipod/lingo-general"
 )
 
 type ShortWriter struct {

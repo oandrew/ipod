@@ -9,13 +9,13 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"git.andrewo.pw/andrew/ipod"
-	"git.andrewo.pw/andrew/ipod/hid"
-	"git.andrewo.pw/andrew/ipod/lingo-audio"
-	"git.andrewo.pw/andrew/ipod/lingo-dispremote"
-	"git.andrewo.pw/andrew/ipod/lingo-extremote"
-	"git.andrewo.pw/andrew/ipod/lingo-general"
-	"git.andrewo.pw/andrew/ipod/lingo-simpleremote"
+	"github.com/oandrew/ipod"
+	"github.com/oandrew/ipod/hid"
+	"github.com/oandrew/ipod/lingo-audio"
+	"github.com/oandrew/ipod/lingo-dispremote"
+	"github.com/oandrew/ipod/lingo-extremote"
+	"github.com/oandrew/ipod/lingo-general"
+	"github.com/oandrew/ipod/lingo-simpleremote"
 )
 
 var devicePath = flag.String("d", "", "iap device i.e. /dev/iap0")
