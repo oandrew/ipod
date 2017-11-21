@@ -91,19 +91,19 @@ func (e *Decoder) ReadFrame() ([]byte, error) {
 		}
 
 		reportData := make([]byte, reportDef.MaxPayload())
-		copy(reportData, report.Data)
+		n := copy(reportData, report.Data)
 		switch report.LinkControl {
 		case LinkControlDone:
 			buf.Reset()
-			buf.Write(reportData)
+			buf.Write(reportData[:n])
 			done = true
 		case LinkControlMoreToFollow:
 			buf.Reset()
-			buf.Write(reportData)
+			buf.Write(reportData[:n])
 		case LinkControlContinue | LinkControlMoreToFollow:
-			buf.Write(reportData)
+			buf.Write(reportData[:n])
 		case LinkControlContinue:
-			buf.Write(reportData)
+			buf.Write(reportData[:n])
 			done = true
 		}
 	}

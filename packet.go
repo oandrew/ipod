@@ -239,7 +239,7 @@ func UnmarshalLargePacket(r io.Reader, p *RawPacket) (err error) {
 	binRead(r, &crcWant)
 
 	if crc.Sum8() != crcWant {
-		return errors.New("large Packet: crc mismatch")
+		return fmt.Errorf("large Packet: crc mismatch: want %02x, got %02x", crcWant, crc.Sum8())
 	}
 
 	payloadBuf := bytes.NewBuffer(payloadData)
