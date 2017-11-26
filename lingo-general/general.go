@@ -2,6 +2,10 @@ package general
 
 import (
 	"bufio"
+	"bytes"
+	"encoding"
+	"encoding/binary"
+	"errors"
 	"io"
 	"io/ioutil"
 
@@ -383,11 +387,137 @@ type SetUIMode struct {
 
 type StartIDPS struct{}
 
+type FIDIdentifyToken struct {
+	NumLingoes    byte
+	AccLingoes    []byte
+	DeviceOptions uint32
+	DeviceID      uint32
+}
+
+func (t *FIDIdentifyToken) UnmarshalBinary(data []byte) error {
+	r := bytes.NewReader(data)
+	binary.Read(r, binary.BigEndian, &t.NumLingoes)
+	t.AccLingoes = make([]byte, t.NumLingoes)
+	binary.Read(r, binary.BigEndian, &t.AccLingoes)
+	binary.Read(r, binary.BigEndian, &t.DeviceOptions)
+	binary.Read(r, binary.BigEndian, &t.DeviceID)
+	return nil
+}
+
+type FIDAccCapsToken struct {
+	AccCapsBitmask uint64
+}
+
+func (t *FIDAccCapsToken) UnmarshalBinary(data []byte) error {
+	r := bytes.NewReader(data)
+	binary.Read(r, binary.BigEndian, &t.AccCapsBitmask)
+	return nil
+}
+
+type FIDAccInfoToken struct {
+	AccInfoType byte
+	Value       interface{}
+}
+
+func (t *FIDAccInfoToken) UnmarshalBinary(data []byte) error {
+	r := bytes.NewReader(data)
+	binary.Read(r, binary.BigEndian, &t.AccInfoType)
+	switch t.AccInfoType {
+	//name
+	case 0x01, 0x06, 0x07, 0x08:
+		t.Value, _ = bufio.NewReader(r).ReadBytes(0x00)
+	case 0x04, 0x05:
+		v := make([]byte, 3)
+		r.Read(v)
+		t.Value = v
+	case 0x09:
+		v := make([]byte, 2)
+		r.Read(v)
+		t.Value = v
+	case 0x0b, 0x0c:
+		v := make([]byte, 4)
+		r.Read(v)
+		t.Value = v
+	default:
+		return errors.New("unknown AccInfoToken type")
+	}
+	return nil
+}
+
+type FIDiPodPreferenceToken struct {
+	PrefClass        byte
+	PrefClassSetting byte
+	RestoreOnExit    byte
+}
+
+func (t *FIDiPodPreferenceToken) UnmarshalBinary(data []byte) error {
+	r := bytes.NewReader(data)
+	return binary.Read(r, binary.BigEndian, t)
+}
+
+type FIDEAProtocolToken struct {
+	ProtocolIndex  byte
+	ProtocolString []byte
+}
+
+func (t *FIDEAProtocolToken) UnmarshalBinary(data []byte) error {
+	t.ProtocolIndex = data[0]
+	t.ProtocolString = data[1:]
+	return nil
+}
+
+type FIDBundleSeedIDPrefToken struct {
+	BundleSeedIDString [11]byte
+}
+
+func (t *FIDBundleSeedIDPrefToken) UnmarshalBinary(data []byte) error {
+	copy(t.BundleSeedIDString[:], data)
+	return nil
+}
+
+type FIDScreenInfoToken struct {
+	ScreenWidthInches  uint16
+	ScreenHeightInches uint16
+	ScreenWidthPixels  uint16
+	ScreenHeightPixels uint16
+
+	IpodScreenWidthPixels  uint16
+	IpodScreenHeightPixels uint16
+
+	ScreenFeaturesMask byte
+	ScreenGammaValue   byte
+}
+
+func (t *FIDScreenInfoToken) UnmarshalBinary(data []byte) error {
+	r := bytes.NewReader(data)
+	return binary.Read(r, binary.BigEndian, t)
+}
+
+type FIDEAProtocolMetadataToken struct {
+	ProtocolIndex byte
+	MetadataType  byte
+}
+
+func (t *FIDEAProtocolMetadataToken) UnmarshalBinary(data []byte) error {
+	t.ProtocolIndex = data[0]
+	t.MetadataType = data[1]
+	return nil
+}
+
+type FIDMicrophoneCapsToken struct {
+	MicCapsBitmask uint32
+}
+
+func (t *FIDMicrophoneCapsToken) UnmarshalBinary(data []byte) error {
+	r := bytes.NewReader(data)
+	return binary.Read(r, binary.BigEndian, t)
+}
+
 type FIDTokenValue struct {
 	Len        byte
 	FIDType    byte
 	FIDSubtype byte
-	Data       []byte
+	Token      interface{}
 }
 
 type SetFIDTokenValues struct {
@@ -419,11 +549,54 @@ func (s *SetFIDTokenValues) UnmarshalPayload(r io.Reader) error {
 		if err != nil {
 			return err
 		}
-		v.Data = make([]byte, v.Len-2)
-		_, err = br.Read(v.Data)
+		data := make([]byte, v.Len-2)
+		_, err = br.Read(data)
 		if err != nil {
 			return err
 		}
+
+		switch v.FIDType {
+		case 0x00:
+			switch v.FIDSubtype {
+			case 0x00:
+				//identify
+				v.Token = &FIDIdentifyToken{}
+			case 0x01:
+				//acc caps
+				v.Token = &FIDAccCapsToken{}
+			case 0x02:
+				//accinfo
+				v.Token = &FIDAccInfoToken{}
+			case 0x03:
+				//ipod pref
+				v.Token = &FIDiPodPreferenceToken{}
+			case 0x04:
+				//sdk proto
+				v.Token = &FIDEAProtocolToken{}
+			case 0x05:
+				// bundleseed
+				v.Token = &FIDBundleSeedIDPrefToken{}
+			case 0x07:
+				// screen info
+				v.Token = &FIDScreenInfoToken{}
+			case 0x08:
+				// eaprotometadata
+				v.Token = &FIDEAProtocolMetadataToken{}
+
+			}
+		case 0x01:
+			//mic
+			v.Token = &FIDMicrophoneCapsToken{}
+		}
+
+		if bu, ok := v.Token.(encoding.BinaryUnmarshaler); ok {
+			if err := bu.UnmarshalBinary(data); err != nil {
+				return err
+			}
+		} else {
+			v.Token = data
+		}
+
 	}
 	return nil
 

@@ -42,40 +42,35 @@ func ackFIDTokens(tokens SetFIDTokenValues) RetFIDTokenValueACKs {
 	resp := RetFIDTokenValueACKs{NumFIDTokenValueACKs: tokens.NumFIDTokenValues}
 	buf := bytes.Buffer{}
 	for _, token := range tokens.FIDTokenValues {
-		switch token.FIDType {
-		case 0x00:
-			switch token.FIDSubtype {
-			case 0x00:
-				//identify
-				buf.Write([]byte{0x03, 0x00, 0x00, 0x00})
-			case 0x01:
-				//acc caps
-				buf.Write([]byte{0x03, 0x00, 0x01, 0x00})
-			case 0x02:
-				//accinfo
-				buf.Write([]byte{0x04, 0x00, 0x02, 0x00, token.Data[0]})
-			case 0x03:
-				//ipod pref
-				//check
-				buf.Write([]byte{0x04, 0x00, 0x03, 0x00, token.Data[0]})
-			case 0x04:
-				//ea proto
-				//check
-				buf.Write([]byte{0x04, 0x00, 0x04, 0x00, token.Data[0]})
-			case 0x05:
-				// bundleseed
-				buf.Write([]byte{0x03, 0x00, 0x05, 0x00})
-			case 0x07:
-				// screen info
-				buf.Write([]byte{0x03, 0x00, 0x07, 0x00})
-			case 0x08:
-				// eaprotometadata
-				buf.Write([]byte{0x03, 0x00, 0x08, 0x00})
-			}
-		case 0x01:
-			//mic
-			buf.Write([]byte{0x03, 0x01, 0x00, 0x00})
+
+		//after subtype
+		ackBuf := bytes.Buffer{}
+		ackBuf.Write([]byte{token.FIDType, token.FIDSubtype})
+
+		switch t := token.Token.(type) {
+		case *FIDIdentifyToken:
+			ackBuf.Write([]byte{0x00})
+		case *FIDAccCapsToken:
+			ackBuf.Write([]byte{0x00})
+		case *FIDAccInfoToken:
+			ackBuf.Write([]byte{0x00, t.AccInfoType})
+		case *FIDiPodPreferenceToken:
+			ackBuf.Write([]byte{0x00, t.PrefClass})
+		case *FIDEAProtocolToken:
+			ackBuf.Write([]byte{0x00, t.ProtocolIndex})
+		case *FIDBundleSeedIDPrefToken:
+			ackBuf.Write([]byte{0x00})
+		case *FIDScreenInfoToken:
+			ackBuf.Write([]byte{0x00})
+		case *FIDEAProtocolMetadataToken:
+			ackBuf.Write([]byte{0x00})
+
+		case *FIDMicrophoneCapsToken:
+			ackBuf.Write([]byte{0x00})
 		}
+		buf.WriteByte(byte(ackBuf.Len()))
+		buf.ReadFrom(&ackBuf)
+
 	}
 	resp.FIDTokenValueACKs = buf.Bytes()
 	return resp
@@ -113,6 +108,7 @@ func HandleGeneral(req ipod.Packet, tr ipod.PacketWriter, dev DeviceGeneral) err
 		ipod.Respond(req, tr, ReturniPodSerialNum{Serial: ipod.StringToBytes(dev.SerialNum())})
 	case RequestLingoProtocolVersion:
 		var resp ReturnLingoProtocolVersion
+		resp.Lingo = msg.Lingo
 		resp.Major, resp.Minor = dev.LingoProtocolVersion(msg.Lingo)
 		ipod.Respond(req, tr, resp)
 	case RequestTransportMaxPayloadSize:
@@ -191,7 +187,7 @@ func HandleGeneral(req ipod.Packet, tr ipod.PacketWriter, dev DeviceGeneral) err
 		switch msg.AccEndIDPSStatus {
 		case AccEndIDPSStatusContinue:
 			ipod.Respond(req, tr, IDPSStatus{Status: IDPSStatusOK})
-			*req.Transaction = 0x0001
+			//*req.Transaction = 0x0001
 			ipod.Respond(req, tr, GetDevAuthenticationInfo{})
 
 			// get dev auth info
