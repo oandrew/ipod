@@ -47,22 +47,27 @@ func HandleExtRemote(req ipod.Packet, tr ipod.PacketWriter, dev DeviceExtRemote)
 	case RetrieveCategorizedDatabaseRecords:
 		ipod.Respond(req, tr, ReturnCategorizedDatabaseRecord{})
 	case GetPlayStatus:
-		// var resp ReturnPlayStatus
-		// resp.TrackLength, resp.TrackPosition, resp.State = dev.PlaybackStatus()
-		// ipod.Respond(req, tr, resp)
 		ipod.Respond(req, tr, ReturnPlayStatus{
 			TrackLength:   300 * 1000,
 			TrackPosition: 20 * 1000,
 			State:         PlayerStatePaused,
 		})
 	case GetCurrentPlayingTrackIndex:
-	// ReturnCurrentPlayingTrackIndex:
+		ipod.Respond(req, tr, ReturnCurrentPlayingTrackIndex{
+			TrackIndex: 0,
+		})
 	case GetIndexedPlayingTrackTitle:
-	// ReturnIndexedPlayingTrackTitle:
+		ipod.Respond(req, tr, ReturnIndexedPlayingTrackTitle{
+			Title: ipod.StringToBytes("title"),
+		})
 	case GetIndexedPlayingTrackArtistName:
-	// ReturnIndexedPlayingTrackArtistName:
+		ipod.Respond(req, tr, ReturnIndexedPlayingTrackArtistName{
+			ArtistName: ipod.StringToBytes("artist"),
+		})
 	case GetIndexedPlayingTrackAlbumName:
-	// ReturnIndexedPlayingTrackAlbumName:
+		ipod.Respond(req, tr, ReturnIndexedPlayingTrackAlbumName{
+			AlbumName: ipod.StringToBytes("album"),
+		})
 	case SetPlayStatusChangeNotification:
 		ipod.Respond(req, tr, ackSuccess(req))
 	//case PlayStatusChangeNotification:
@@ -83,14 +88,21 @@ func HandleExtRemote(req ipod.Packet, tr ipod.PacketWriter, dev DeviceExtRemote)
 		ipod.Respond(req, tr, ackSuccess(req))
 
 	case SetDisplayImage:
+		ipod.Respond(req, tr, ackSuccess(req))
 	case GetMonoDisplayImageLimits:
 	// ReturnMonoDisplayImageLimits:
 	case GetNumPlayingTracks:
-	// ReturnNumPlayingTracks:
+		ipod.Respond(req, tr, ReturnNumPlayingTracks{
+			NumTracks: 0,
+		})
 	case SetCurrentPlayingTrack:
 	case SelectSortDBRecord:
 	case GetColorDisplayImageLimits:
-	// ReturnColorDisplayImageLimits:
+		ipod.Respond(req, tr, ReturnColorDisplayImageLimits{
+			MaxWidth:    320,
+			MaxHeight:   240,
+			PixelFormat: 0x01,
+		})
 	case ResetDBSelectionHierarchy:
 	case GetDBiTunesInfo:
 	// RetDBiTunesInfo:

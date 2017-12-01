@@ -1,6 +1,8 @@
 package extremote
 
 import (
+	"io"
+
 	"github.com/oandrew/ipod"
 )
 
@@ -226,20 +228,38 @@ type GetIndexedPlayingTrackTitle struct {
 	TrackIndex uint32
 }
 type ReturnIndexedPlayingTrackTitle struct {
-	Title [16]byte // length
+	Title []byte
 }
+
+func (s ReturnIndexedPlayingTrackTitle) MarshalPayload(w io.Writer) error {
+	w.Write(s.Title)
+	return nil
+}
+
 type GetIndexedPlayingTrackArtistName struct {
 	TrackIndex uint32
 }
 type ReturnIndexedPlayingTrackArtistName struct {
-	ArtistName [16]byte // length
+	ArtistName []byte
 }
+
+func (s ReturnIndexedPlayingTrackArtistName) MarshalPayload(w io.Writer) error {
+	w.Write(s.ArtistName)
+	return nil
+}
+
 type GetIndexedPlayingTrackAlbumName struct {
 	TrackIndex uint32
 }
 type ReturnIndexedPlayingTrackAlbumName struct {
-	AlbumName [16]byte // length
+	AlbumName []byte // length
 }
+
+func (s ReturnIndexedPlayingTrackAlbumName) MarshalPayload(w io.Writer) error {
+	w.Write(s.AlbumName)
+	return nil
+}
+
 type SetPlayStatusChangeNotification struct {
 	EventMask uint32
 }
@@ -338,7 +358,11 @@ type SelectSortDBRecord struct {
 type GetColorDisplayImageLimits struct {
 }
 type ReturnColorDisplayImageLimits struct {
+	MaxWidth    uint16
+	MaxHeight   uint16
+	PixelFormat byte
 }
+
 type ResetDBSelectionHierarchy struct {
 	Selection byte
 }
