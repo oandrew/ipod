@@ -21,21 +21,59 @@ func HandleExtRemote(req ipod.Packet, tr ipod.PacketWriter, dev DeviceExtRemote)
 	switch msg := req.Payload.(type) {
 
 	case GetCurrentPlayingTrackChapterInfo:
-	// ReturnCurrentPlayingTrackChapterInfo:
+		ipod.Respond(req, tr, ReturnCurrentPlayingTrackChapterInfo{
+			CurrentChapterIndex: -1,
+			ChapterCount:        0,
+		})
 	case SetCurrentPlayingTrackChapter:
+		ipod.Respond(req, tr, ackSuccess(req))
 	case GetCurrentPlayingTrackChapterPlayStatus:
-	// ReturnCurrentPlayingTrackChapterPlayStatus:
+		ipod.Respond(req, tr, ReturnCurrentPlayingTrackChapterPlayStatus{
+			ChapterPosition: 0,
+			ChapterLength:   0,
+		})
 	case GetCurrentPlayingTrackChapterName:
-	// ReturnCurrentPlayingTrackChapterName:
+		ipod.Respond(req, tr, ReturnCurrentPlayingTrackChapterName{
+			ChapterName: ipod.StringToBytes("chapter"),
+		})
 	case GetAudiobookSpeed:
-	// ReturnAudiobookSpeed:
+		ipod.Respond(req, tr, ReturnAudiobookSpeed{
+			Speed: 0,
+		})
 	case SetAudiobookSpeed:
+		ipod.Respond(req, tr, ackSuccess(req))
 	case GetIndexedPlayingTrackInfo:
-	// ReturnIndexedPlayingTrackInfo:
+		var info interface{}
+		switch msg.InfoType {
+		case TrackInfoCaps:
+			info = &TrackCaps{
+				Caps:         0x0,
+				TrackLength:  300 * 1000,
+				ChapterCount: 0,
+			}
+		case TrackInfoDescription, TrackInfoLyrics:
+			info = &TrackLongText{
+				Flags:       0x0,
+				PacketIndex: 0,
+				Text:        0x00,
+			}
+		case TrackInfoArtworkCount:
+			info = struct{}{}
+		default:
+			info = []byte{0x00}
+
+		}
+		ipod.Respond(req, tr, ReturnIndexedPlayingTrackInfo{
+			InfoType: msg.InfoType,
+			Info:     info,
+		})
 	case GetArtworkFormats:
-	// RetArtworkFormats:
+		ipod.Respond(req, tr, RetArtworkFormats{})
 	case GetTrackArtworkData:
-	// RetTrackArtworkData:
+		ipod.Respond(req, tr, ACK{
+			Status: ACKStatusFailed,
+			CmdID:  req.ID.CmdID(),
+		})
 	case ResetDBSelection:
 		ipod.Respond(req, tr, ackSuccess(req))
 	case SelectDBRecord:
@@ -72,11 +110,11 @@ func HandleExtRemote(req ipod.Packet, tr ipod.PacketWriter, dev DeviceExtRemote)
 		ipod.Respond(req, tr, ackSuccess(req))
 	//case PlayStatusChangeNotification:
 	case PlayCurrentSelection:
+		ipod.Respond(req, tr, ackSuccess(req))
 	case PlayControl:
 		ipod.Respond(req, tr, ackSuccess(req))
 	case GetTrackArtworkTimes:
-	// RetTrackArtworkTimes:
-
+		ipod.Respond(req, tr, RetTrackArtworkTimes{})
 	case GetShuffle:
 		ipod.Respond(req, tr, ReturnShuffle{Mode: ShuffleOff})
 	case SetShuffle:
@@ -90,7 +128,11 @@ func HandleExtRemote(req ipod.Packet, tr ipod.PacketWriter, dev DeviceExtRemote)
 	case SetDisplayImage:
 		ipod.Respond(req, tr, ackSuccess(req))
 	case GetMonoDisplayImageLimits:
-	// ReturnMonoDisplayImageLimits:
+		ipod.Respond(req, tr, ReturnMonoDisplayImageLimits{
+			MaxWidth:    320,
+			MaxHeight:   240,
+			PixelFormat: 0x01,
+		})
 	case GetNumPlayingTracks:
 		ipod.Respond(req, tr, ReturnNumPlayingTracks{
 			NumTracks: 0,
@@ -104,6 +146,8 @@ func HandleExtRemote(req ipod.Packet, tr ipod.PacketWriter, dev DeviceExtRemote)
 			PixelFormat: 0x01,
 		})
 	case ResetDBSelectionHierarchy:
+		//noop
+
 	case GetDBiTunesInfo:
 	// RetDBiTunesInfo:
 	case GetUIDTrackInfo:

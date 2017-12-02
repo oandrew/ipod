@@ -1,6 +1,7 @@
 package extremote
 
 import (
+	"encoding/binary"
 	"io"
 
 	"github.com/oandrew/ipod"
@@ -92,24 +93,24 @@ type ACK struct {
 type GetCurrentPlayingTrackChapterInfo struct {
 }
 type ReturnCurrentPlayingTrackChapterInfo struct {
-	CurrentChapterIndex uint32
-	ChapterCount        uint32
+	CurrentChapterIndex int32
+	ChapterCount        int32
 }
 type SetCurrentPlayingTrackChapter struct {
-	ChapterIndex uint32
+	ChapterIndex int32
 }
 type GetCurrentPlayingTrackChapterPlayStatus struct {
-	CurrentChapterIndex uint32
+	CurrentChapterIndex int32
 }
 type ReturnCurrentPlayingTrackChapterPlayStatus struct {
 	ChapterLength   uint32
 	ChapterPosition uint32
 }
 type GetCurrentPlayingTrackChapterName struct {
-	ChapterIndex uint32
+	ChapterIndex int32
 }
 type ReturnCurrentPlayingTrackChapterName struct {
-	ChapterName [16]byte
+	ChapterName []byte
 }
 type GetAudiobookSpeed struct {
 }
@@ -134,15 +135,38 @@ const (
 	TrackInfoArtworkCount TrackInfoType = 0x07
 )
 
+type TrackCaps struct {
+	Caps         uint32
+	TrackLength  uint32
+	ChapterCount uint16
+}
+
+type TrackReleaseDate struct {
+	Pad uint64
+}
+
+type TrackLongText struct {
+	Flags       byte
+	PacketIndex uint16
+	Text        byte // string
+}
+
 type GetIndexedPlayingTrackInfo struct {
 	InfoType     TrackInfoType
-	TrackIndex   uint32
-	ChapterIndex uint16
+	TrackIndex   int32
+	ChapterIndex int16
 }
 type ReturnIndexedPlayingTrackInfo struct {
 	InfoType TrackInfoType
-	//finish up
+	Info     interface{}
 }
+
+func (s ReturnIndexedPlayingTrackInfo) MarshalPayload(w io.Writer) error {
+	binary.Write(w, binary.BigEndian, s.InfoType)
+	binary.Write(w, binary.BigEndian, s.Info)
+	return nil
+}
+
 type GetArtworkFormats struct {
 }
 
@@ -156,12 +180,22 @@ type RetArtworkFormats struct {
 	Formats []ArtworkFormat
 }
 type GetTrackArtworkData struct {
-	TrackIndex uint32
+	TrackIndex int32
 	FormatID   uint16
 	Offset     uint32
 }
 type RetTrackArtworkData struct {
-	//finish up
+	PacketIndex uint16
+	PixelFormat byte
+	ImageWidth  uint16
+	ImageHeight uint16
+
+	TopLeftX     uint16
+	TopLeftY     uint16
+	BottomRightX uint16
+	BottomRightY uint16
+	RowSize      uint32
+	Data         []byte
 }
 
 //ack
@@ -184,18 +218,18 @@ const (
 
 type SelectDBRecord struct {
 	CategoryType DBCategoryType
-	RecordIndex  uint32
+	RecordIndex  int32
 }
 type GetNumberCategorizedDBRecords struct {
 	CategoryType DBCategoryType
 }
 type ReturnNumberCategorizedDBRecords struct {
-	RecordCount uint32
+	RecordCount int32
 }
 type RetrieveCategorizedDatabaseRecords struct {
 	CategoryType DBCategoryType
 	Offset       uint32
-	Count        uint32
+	Count        int32
 }
 type ReturnCategorizedDatabaseRecord struct {
 	RecordCategoryIndex uint32
@@ -222,10 +256,10 @@ type ReturnPlayStatus struct {
 type GetCurrentPlayingTrackIndex struct {
 }
 type ReturnCurrentPlayingTrackIndex struct {
-	TrackIndex uint32
+	TrackIndex int32
 }
 type GetIndexedPlayingTrackTitle struct {
-	TrackIndex uint32
+	TrackIndex int32
 }
 type ReturnIndexedPlayingTrackTitle struct {
 	Title []byte
@@ -237,7 +271,7 @@ func (s ReturnIndexedPlayingTrackTitle) MarshalPayload(w io.Writer) error {
 }
 
 type GetIndexedPlayingTrackArtistName struct {
-	TrackIndex uint32
+	TrackIndex int32
 }
 type ReturnIndexedPlayingTrackArtistName struct {
 	ArtistName []byte
@@ -249,10 +283,10 @@ func (s ReturnIndexedPlayingTrackArtistName) MarshalPayload(w io.Writer) error {
 }
 
 type GetIndexedPlayingTrackAlbumName struct {
-	TrackIndex uint32
+	TrackIndex int32
 }
 type ReturnIndexedPlayingTrackAlbumName struct {
-	AlbumName []byte // length
+	AlbumName []byte
 }
 
 func (s ReturnIndexedPlayingTrackAlbumName) MarshalPayload(w io.Writer) error {
@@ -267,7 +301,7 @@ type PlayStatusChangeNotification struct {
 	Status byte // finish
 }
 type PlayCurrentSelection struct {
-	SelectedTrackIndex uint32
+	SelectedTrackIndex int32
 }
 
 type PlayControlCmd byte
@@ -292,10 +326,13 @@ type PlayControl struct {
 	Cmd PlayControlCmd
 }
 type GetTrackArtworkTimes struct {
-	// todo
+	TrackIndex   int32
+	FormatID     uint16
+	ArtworkIndex uint16
+	ArtworkCount int16
 }
 type RetTrackArtworkTimes struct {
-	// todo
+	// empty for now
 }
 
 type ShuffleMode byte
@@ -337,10 +374,11 @@ type SetDisplayImage struct {
 	//todo
 }
 type GetMonoDisplayImageLimits struct {
-	//todo
 }
 type ReturnMonoDisplayImageLimits struct {
-	//todo
+	MaxWidth    uint16
+	MaxHeight   uint16
+	PixelFormat byte
 }
 type GetNumPlayingTracks struct {
 }
@@ -348,11 +386,11 @@ type ReturnNumPlayingTracks struct {
 	NumTracks uint32
 }
 type SetCurrentPlayingTrack struct {
-	TrackIndex uint32
+	TrackIndex int32
 }
 type SelectSortDBRecord struct {
 	CategoryType DBCategoryType
-	RecordIndex  uint32
+	RecordIndex  int32
 	SortType     byte // add enum
 }
 type GetColorDisplayImageLimits struct {
