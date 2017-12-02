@@ -45,6 +45,9 @@ func Respond(req Packet, pw PacketWriter, payload interface{}) {
 	pw.WritePacket(p)
 }
 
+// UnknownPayload is a payload  that represents an unknown command
+type UnknownPayload []byte
+
 type Transaction uint16
 
 func (tr Transaction) GoString() string {
@@ -173,7 +176,7 @@ func UnmarshalSmallPacket(r io.Reader, p *RawPacket) (err error) {
 	var crcWant byte
 	binRead(r, &crcWant)
 	if crc.Sum8() != crcWant {
-		return errors.New("small Packet: crc mismatch")
+		return fmt.Errorf("small Packet: crc mismatch: want %02x, got %02x", crc.Sum8(), crcWant)
 	}
 
 	payloadBuf := bytes.NewBuffer(payloadData)
@@ -239,7 +242,7 @@ func UnmarshalLargePacket(r io.Reader, p *RawPacket) (err error) {
 	binRead(r, &crcWant)
 
 	if crc.Sum8() != crcWant {
-		return fmt.Errorf("large Packet: crc mismatch: want %02x, got %02x", crcWant, crc.Sum8())
+		return fmt.Errorf("large Packet: crc mismatch: want %02x, got %02x", crc.Sum8(), crcWant)
 	}
 
 	payloadBuf := bytes.NewBuffer(payloadData)
@@ -313,12 +316,14 @@ func UnmarshalPacket(r io.Reader, pp *Packet) (err error) {
 		}
 	}
 
+	pp.ID = p.ID
+
 	lookup, ok := Lookup(p.ID, len(p.Data))
 	if !ok {
-		return fmt.Errorf("id/size not found: %#v", p)
+		pp.Payload = UnknownPayload(p.Data)
+		return fmt.Errorf("unknown command id/size: %#v", p)
 	}
 
-	pp.ID = p.ID
 	dr := bytes.NewReader(p.Data)
 	if lookup.Transaction {
 		var tr Transaction

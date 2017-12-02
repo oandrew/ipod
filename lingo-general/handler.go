@@ -38,6 +38,10 @@ func ackPending(req ipod.Packet, maxWait uint32) ACKPending {
 	return ACKPending{Status: ACKStatusPending, CmdID: uint8(req.ID.CmdID()), MaxWait: maxWait}
 }
 
+func ack(req ipod.Packet, status ACKStatus) ACK {
+	return ACK{Status: status, CmdID: uint8(req.ID.CmdID())}
+}
+
 func ackFIDTokens(tokens SetFIDTokenValues) RetFIDTokenValueACKs {
 	resp := RetFIDTokenValueACKs{NumFIDTokenValueACKs: tokens.NumFIDTokenValues}
 	buf := bytes.Buffer{}
@@ -236,6 +240,8 @@ func HandleGeneral(req ipod.Packet, tr ipod.PacketWriter, dev DeviceGeneral) err
 	case GetNowPlayingFocusApp:
 		ipod.Respond(req, tr, RetNowPlayingFocusApp{AppID: ipod.StringToBytes("")})
 
+	case ipod.UnknownPayload:
+		ipod.Respond(req, tr, ack(req, ACKStatusUnkownID))
 	default:
 		_ = msg
 	}

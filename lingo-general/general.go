@@ -99,8 +99,9 @@ type RequestIdentify struct{}
 type ACKStatus uint8
 
 const (
-	ACKStatusSuccess ACKStatus = 0x00
-	ACKStatusPending ACKStatus = 0x06
+	ACKStatusSuccess  ACKStatus = 0x00
+	ACKStatusUnkownID ACKStatus = 0x05
+	ACKStatusPending  ACKStatus = 0x06
 )
 
 type ACK struct {
