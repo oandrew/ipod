@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 
 	"os"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/oandrew/ipod/lingo-extremote"
 	"github.com/oandrew/ipod/lingo-general"
 	"github.com/oandrew/ipod/lingo-simpleremote"
+	"github.com/oandrew/ipod/trace"
 )
 
 var devicePath = flag.String("d", "", "iap device i.e. /dev/iap0")
@@ -34,7 +36,8 @@ func open() io.ReadWriter {
 			e.WithError(err).Fatalf("Couldn't open the trace file")
 		}
 		e.Warningf("Using trace file")
-		return NewLoadTraceReadWriter(f)
+		t := trace.NewReader(f)
+		return ReadWriter{NewTraceInputReader(t), ioutil.Discard}
 
 	} else if *devicePath != "" {
 		dev, err := os.OpenFile(*devicePath, os.O_RDWR, os.ModePerm)
@@ -74,11 +77,7 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("Couldn't open the save trace file")
 		}
-		f = &tracingReadWriter{
-			r:     f,
-			w:     f,
-			trace: traceFile,
-		}
+		f = trace.NewTracer(traceFile, f)
 	}
 	hidReportTransport := hid.NewCharDevReportTransport(f)
 	frameTransport := hid.NewTransport(hidReportTransport, hid.DefaultReportDefs)
