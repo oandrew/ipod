@@ -35,25 +35,25 @@ func (d *DummyFrameReadWriter) WriteFrame([]byte) error {
 	return nil
 }
 
-type transportPacketReader struct {
-	tr FrameReader
+type packetReader struct {
+	fr FrameReader
 	r  *bytes.Reader
 }
 
-func (tpr *transportPacketReader) ReadPacket() (Packet, error) {
+func (pr *packetReader) ReadPacket() (Packet, error) {
 
 	for {
-		if tpr.r == nil || tpr.r.Len() == 0 {
-			frame, err := tpr.tr.ReadFrame()
+		if pr.r == nil || pr.r.Len() == 0 {
+			frame, err := pr.fr.ReadFrame()
 			if err != nil {
 				return Packet{}, err
 			}
 			//log.Printf("frame: [% 02x]", frame)
-			tpr.r = bytes.NewReader(frame)
+			pr.r = bytes.NewReader(frame)
 		}
 		//log.Printf("leftover: %d", tpr.r.Len())
 		var pkt Packet
-		err := UnmarshalPacket(tpr.r, &pkt)
+		err := UnmarshalPacket(pr.r, &pkt)
 		if err == io.EOF {
 			continue
 		}
@@ -62,29 +62,50 @@ func (tpr *transportPacketReader) ReadPacket() (Packet, error) {
 
 }
 
-func NewPacketReader(tr FrameReader) PacketReader {
-	return &transportPacketReader{
-		tr: tr,
+func NewPacketReader(fr FrameReader) PacketReader {
+	return &packetReader{
+		fr: fr,
 	}
 
 }
 
-type transportPacketWriter struct {
-	tr FrameWriter
+type packetWriter struct {
+	fw FrameWriter
 }
 
-func (tpw *transportPacketWriter) WritePacket(pkt Packet) error {
+func (pw *packetWriter) WritePacket(pkt Packet) error {
 	buf := bytes.Buffer{}
 	if err := MarshalPacket(&buf, &pkt); err != nil {
 		return err
 	}
-	return tpw.tr.WriteFrame(buf.Bytes())
+	return pw.fw.WriteFrame(buf.Bytes())
 
 }
 
-func NewPacketWriter(tr FrameWriter) PacketWriter {
-	return &transportPacketWriter{
-		tr: tr,
+func NewPacketWriter(fw FrameWriter) PacketWriter {
+	return &packetWriter{
+		fw: fw,
+	}
+}
+
+type BufferedPacketWriter struct {
+	buf bytes.Buffer
+	fw  FrameWriter
+}
+
+func (bpw *BufferedPacketWriter) WritePacket(pkt Packet) error {
+	return MarshalPacket(&bpw.buf, &pkt)
+}
+
+func (bpw *BufferedPacketWriter) Flush() error {
+	frame := bpw.buf.Bytes()
+	bpw.buf.Reset()
+	return bpw.fw.WriteFrame(frame)
+}
+
+func NewBufferedPacketWriter(fw FrameWriter) *BufferedPacketWriter {
+	return &BufferedPacketWriter{
+		fw: fw,
 	}
 }
 
