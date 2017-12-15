@@ -36,88 +36,48 @@ func (d *DummyFrameReadWriter) WriteFrame([]byte) error {
 }
 
 type packetReader struct {
-	fr FrameReader
-	r  *bytes.Reader
+	r *bytes.Reader
 }
 
 func (pr *packetReader) ReadPacket() (Packet, error) {
-
-	for {
-		if pr.r == nil || pr.r.Len() == 0 {
-			frame, err := pr.fr.ReadFrame()
-			if err != nil {
-				return Packet{}, err
-			}
-			//log.Printf("frame: [% 02x]", frame)
-			pr.r = bytes.NewReader(frame)
-		}
-		//log.Printf("leftover: %d", tpr.r.Len())
-		var pkt Packet
-		err := UnmarshalPacket(pr.r, &pkt)
-		if err == io.EOF {
-			continue
-		}
-		return pkt, err
+	if pr.r.Len() == 0 {
+		return Packet{}, io.EOF
 	}
 
+	var pkt Packet
+	err := UnmarshalPacket(pr.r, &pkt)
+	return pkt, err
 }
 
-func NewPacketReader(fr FrameReader) PacketReader {
+func NewPacketReader(frame []byte) PacketReader {
 	return &packetReader{
-		fr: fr,
+		r: bytes.NewReader(frame),
 	}
 
 }
 
-type packetWriter struct {
-	fw FrameWriter
+type PacketBuffer struct {
+	Packets []Packet
 }
 
-func (pw *packetWriter) WritePacket(pkt Packet) error {
-	buf := bytes.Buffer{}
-	if err := MarshalPacket(&buf, &pkt); err != nil {
-		return err
-	}
-	return pw.fw.WriteFrame(buf.Bytes())
-
+func (pb *PacketBuffer) WritePacket(pkt Packet) error {
+	pb.Packets = append(pb.Packets, pkt)
+	return nil
 }
 
-func NewPacketWriter(fw FrameWriter) PacketWriter {
-	return &packetWriter{
-		fw: fw,
-	}
-}
-
-type BufferedPacketWriter struct {
+type FrameBuilder struct {
 	buf bytes.Buffer
-	fw  FrameWriter
 }
 
-func (bpw *BufferedPacketWriter) WritePacket(pkt Packet) error {
-	return MarshalPacket(&bpw.buf, &pkt)
+func (fb *FrameBuilder) WritePacket(pkt Packet) error {
+	return MarshalPacket(&fb.buf, &pkt)
 }
 
-func (bpw *BufferedPacketWriter) Flush() error {
-	frame := bpw.buf.Bytes()
-	bpw.buf.Reset()
-	return bpw.fw.WriteFrame(frame)
+func (fb *FrameBuilder) Frame() []byte {
+	return fb.buf.Bytes()
 }
 
-func NewBufferedPacketWriter(fw FrameWriter) *BufferedPacketWriter {
-	return &BufferedPacketWriter{
-		fw: fw,
-	}
+func NewFrameBuilder() *FrameBuilder {
+	return &FrameBuilder{}
 }
 
-type packetRW struct {
-	PacketReader
-	PacketWriter
-}
-
-func NewPacketTransport(tr FrameReadWriter) PacketReadWriter {
-	return &packetRW{
-		PacketReader: NewPacketReader(tr),
-		PacketWriter: NewPacketWriter(tr),
-	}
-
-}

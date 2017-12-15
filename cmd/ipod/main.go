@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"time"
 
 	"os"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/sirupsen/logrus"
 
 	"github.com/oandrew/ipod"
@@ -67,7 +69,10 @@ func main() {
 	if *verbose {
 		log.SetLevel(logrus.DebugLevel)
 	}
-	log.Formatter = &logrus.TextFormatter{}
+	log.Formatter = &logrus.TextFormatter{
+		FullTimestamp:   true,
+		TimestampFormat: time.StampMilli,
+	}
 
 	log.Debugf("Registered lingos:\n%s", ipod.DumpLingos())
 
@@ -81,45 +86,97 @@ func main() {
 	}
 	hidReportTransport := hid.NewCharDevReportTransport(f)
 	frameTransport := hid.NewTransport(hidReportTransport, hid.DefaultReportDefs)
-	logFrameTransport := &ipod.LoggingFrameReadWriter{
-		RW: frameTransport,
-		L:  log,
-	}
 
-	packetTransport := ipod.NewPacketTransport(logFrameTransport)
-	packetRW := &ipod.LoggingPacketReadWriter{
-		RW: packetTransport,
-		L:  log,
-	}
+	processFrames(frameTransport)
 
-	devGeneral := &DevGeneral{}
+}
 
+func processFrames(frameTransport ipod.FrameReadWriter) {
 	for {
-		packet, err := packetRW.ReadPacket()
+		inFrame, err := frameTransport.ReadFrame()
 		if err != nil {
 			if err == io.EOF {
 				break
-			} else {
-				log.Error(err)
 			}
+			log.WithError(err).Errorf("<< FRAME READ ERROR")
+			continue
 		}
 
-		switch packet.ID.LingoID() {
-		case general.LingoGeneralID:
-			general.HandleGeneral(packet, packetRW, devGeneral)
-			if _, ok := packet.Payload.(general.RetDevAuthenticationSignature); ok {
-				audio.Start(packetRW)
-			}
-		case simpleremote.LingoSimpleRemotelID:
-			//todo
-			log.Warn("Lingo SimpleRemote is not supported yet")
-		case dispremote.LingoDisplayRemoteID:
-			dispremote.HandleDispRemote(packet, packetRW, nil)
-		case extremote.LingoExtRemotelID:
-			extremote.HandleExtRemote(packet, packetRW, nil)
-		case audio.LingoAudioID:
-			audio.HandleAudio(packet, packetRW, nil)
+		FrameLogEntry(logrus.NewEntry(log), inFrame).Infof("<< FRAME READ")
+		if log.Level == logrus.DebugLevel {
+			log.Debug(spew.Sdump(inFrame))
 		}
 
+		packetReader := ipod.NewPacketReader(inFrame)
+		for {
+			inPacket, err := packetReader.ReadPacket()
+			inPktLogE := PacketLogEntry(logrus.NewEntry(log), inPacket)
+
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				inPktLogE.WithError(err).Errorf("<< PACKET READ ERROR")
+				continue
+			}
+			inPktLogE.Infof("<< PACKET READ")
+			if log.Level == logrus.DebugLevel {
+				log.Debug(spew.Sdump(inPacket))
+			}
+
+			packetBuf := ipod.PacketBuffer{}
+			//todo: check return error
+			handlePacket(&packetBuf, inPacket)
+			if len(packetBuf.Packets) == 0 {
+				continue
+			}
+			frameBuilder := ipod.NewFrameBuilder()
+			for i := range packetBuf.Packets {
+				outPacket := packetBuf.Packets[i]
+				outPktLogE := PacketLogEntry(logrus.NewEntry(log), outPacket)
+				if err := frameBuilder.WritePacket(outPacket); err != nil {
+					outPktLogE.WithError(err).Errorf(">> PACKET WRITE ERROR")
+				}
+				outPktLogE.Infof(">> PACKET WRITE")
+				if log.Level == logrus.DebugLevel {
+					log.Debug(spew.Sdump(outPacket.Payload))
+				}
+			}
+			outFrame := frameBuilder.Frame()
+			if len(outFrame) > 0 {
+				outFrameLogE := FrameLogEntry(logrus.NewEntry(log), outFrame)
+				if err := frameTransport.WriteFrame(outFrame); err != nil {
+					outFrameLogE.WithError(err).Errorf(">> FRAME WRITE ERROR")
+				}
+				outFrameLogE.Infof(">> FRAME WRITE")
+				if log.Level == logrus.DebugLevel {
+					log.Debug(spew.Sdump(outFrame))
+				}
+
+			}
+
+		}
+	}
+	log.Warnf("EOF")
+}
+
+var devGeneral = &DevGeneral{}
+
+func handlePacket(packetRW ipod.PacketWriter, packet ipod.Packet) {
+	switch packet.ID.LingoID() {
+	case general.LingoGeneralID:
+		general.HandleGeneral(packet, packetRW, devGeneral)
+		if _, ok := packet.Payload.(general.RetDevAuthenticationSignature); ok {
+			audio.Start(packetRW)
+		}
+	case simpleremote.LingoSimpleRemotelID:
+		//todo
+		log.Warn("Lingo SimpleRemote is not supported yet")
+	case dispremote.LingoDisplayRemoteID:
+		dispremote.HandleDispRemote(packet, packetRW, nil)
+	case extremote.LingoExtRemotelID:
+		extremote.HandleExtRemote(packet, packetRW, nil)
+	case audio.LingoAudioID:
+		audio.HandleAudio(packet, packetRW, nil)
 	}
 }
