@@ -18,25 +18,25 @@ type Packet struct {
 	Payload     interface{}
 }
 
-func (p Packet) WithTransaction(t uint16) Packet {
+func (p Packet) WithTransaction(t uint16) *Packet {
 	tr := Transaction(t)
 	p.Transaction = &tr
-	return p
+	return &p
 }
 
-func BuildPacket(payload interface{}) (Packet, error) {
+func BuildPacket(payload interface{}) (*Packet, error) {
 	id, ok := LookupID(payload)
 	if !ok {
-		return Packet{}, errors.New("payload not known")
+		return nil, errors.New("payload not known")
 	}
-	return Packet{
+	return &Packet{
 		ID:      id,
 		Payload: payload,
 	}, nil
 
 }
 
-func Respond(req Packet, pw PacketWriter, payload interface{}) {
+func Respond(req *Packet, pw PacketWriter, payload interface{}) {
 	p, err := BuildPacket(payload)
 	if err != nil {
 		return
@@ -71,11 +71,11 @@ type PayloadMarshaler interface {
 }
 
 type PacketReader interface {
-	ReadPacket() (Packet, error)
+	ReadPacket() (*Packet, error)
 }
 
 type PacketWriter interface {
-	WritePacket(Packet) error
+	WritePacket(*Packet) error
 }
 
 type PacketReadWriter interface {

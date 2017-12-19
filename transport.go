@@ -39,14 +39,14 @@ type packetReader struct {
 	r *bytes.Reader
 }
 
-func (pr *packetReader) ReadPacket() (Packet, error) {
+func (pr *packetReader) ReadPacket() (*Packet, error) {
 	if pr.r.Len() == 0 {
-		return Packet{}, io.EOF
+		return nil, io.EOF
 	}
 
 	var pkt Packet
 	err := UnmarshalPacket(pr.r, &pkt)
-	return pkt, err
+	return &pkt, err
 }
 
 func NewPacketReader(frame []byte) PacketReader {
@@ -57,27 +57,32 @@ func NewPacketReader(frame []byte) PacketReader {
 }
 
 type PacketBuffer struct {
-	Packets []Packet
+	Packets []*Packet
 }
 
-func (pb *PacketBuffer) WritePacket(pkt Packet) error {
+func (pb *PacketBuffer) WritePacket(pkt *Packet) error {
 	pb.Packets = append(pb.Packets, pkt)
 	return nil
 }
 
 type FrameBuilder struct {
-	buf bytes.Buffer
+	buf *bytes.Buffer
 }
 
-func (fb *FrameBuilder) WritePacket(pkt Packet) error {
-	return MarshalPacket(&fb.buf, &pkt)
+func (fb *FrameBuilder) WritePacket(pkt *Packet) error {
+	return MarshalPacket(fb.buf, pkt)
 }
 
 func (fb *FrameBuilder) Frame() []byte {
 	return fb.buf.Bytes()
 }
 
-func NewFrameBuilder() *FrameBuilder {
-	return &FrameBuilder{}
+func (fb *FrameBuilder) Reset() {
+	fb.buf.Reset()
 }
 
+func NewFrameBuilder() *FrameBuilder {
+	return &FrameBuilder{
+		buf: bytes.NewBuffer(make([]byte, 0, 1024)),
+	}
+}

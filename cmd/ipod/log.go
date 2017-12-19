@@ -13,7 +13,10 @@ func FrameLogEntry(e *logrus.Entry, frame []byte) *logrus.Entry {
 	})
 }
 
-func PacketLogEntry(e *logrus.Entry, pkt ipod.Packet) *logrus.Entry {
+func PacketLogEntry(e *logrus.Entry, pkt *ipod.Packet) *logrus.Entry {
+	if pkt == nil {
+		return e
+	}
 	return e.WithFields(logrus.Fields{
 		"id":   pkt.ID,
 		"trx":  pkt.Transaction,

@@ -22,7 +22,7 @@ func Start(tr ipod.PacketWriter) {
 	tr.WritePacket(p)
 }
 
-func HandleAudio(req ipod.Packet, tr ipod.PacketWriter, dev DeviceAudio) error {
+func HandleAudio(req *ipod.Packet, tr ipod.PacketWriter, dev DeviceAudio) error {
 	switch msg := req.Payload.(type) {
 	case AccAck:
 	case RetAccSampleRateCaps:

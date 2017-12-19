@@ -8,7 +8,7 @@ type DeviceExtRemote interface {
 	PlaybackStatus() (trackLength, trackPos uint32, state PlayerState)
 }
 
-func ackSuccess(req ipod.Packet) ACK {
+func ackSuccess(req *ipod.Packet) ACK {
 	return ACK{Status: ACKStatusSuccess, CmdID: req.ID.CmdID()}
 }
 
@@ -16,7 +16,7 @@ func ackSuccess(req ipod.Packet) ACK {
 // 	return ACKPending{Status: ACKStatusPending, CmdID: uint8(req.ID.CmdID()), MaxWait: maxWait}
 // }
 
-func HandleExtRemote(req ipod.Packet, tr ipod.PacketWriter, dev DeviceExtRemote) error {
+func HandleExtRemote(req *ipod.Packet, tr ipod.PacketWriter, dev DeviceExtRemote) error {
 	//log.Printf("Req: %#v", req)
 	switch msg := req.Payload.(type) {
 

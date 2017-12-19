@@ -7,11 +7,11 @@ import (
 type DeviceDispRemote interface {
 }
 
-func ackSuccess(req ipod.Packet) ACK {
+func ackSuccess(req *ipod.Packet) ACK {
 	return ACK{Status: ACKStatusSuccess, CmdID: uint8(req.ID.CmdID())}
 }
 
-func HandleDispRemote(req ipod.Packet, tr ipod.PacketWriter, dev DeviceDispRemote) error {
+func HandleDispRemote(req *ipod.Packet, tr ipod.PacketWriter, dev DeviceDispRemote) error {
 	switch msg := req.Payload.(type) {
 
 	case GetCurrentEQProfileIndex:

@@ -92,6 +92,8 @@ func main() {
 }
 
 func processFrames(frameTransport ipod.FrameReadWriter) {
+	frameBuilder := ipod.NewFrameBuilder()
+
 	for {
 		inFrame, err := frameTransport.ReadFrame()
 		if err != nil {
@@ -130,7 +132,7 @@ func processFrames(frameTransport ipod.FrameReadWriter) {
 			if len(packetBuf.Packets) == 0 {
 				continue
 			}
-			frameBuilder := ipod.NewFrameBuilder()
+			frameBuilder.Reset()
 			for i := range packetBuf.Packets {
 				outPacket := packetBuf.Packets[i]
 				outPktLogE := PacketLogEntry(logrus.NewEntry(log), outPacket)
@@ -162,7 +164,7 @@ func processFrames(frameTransport ipod.FrameReadWriter) {
 
 var devGeneral = &DevGeneral{}
 
-func handlePacket(packetRW ipod.PacketWriter, packet ipod.Packet) {
+func handlePacket(packetRW ipod.PacketWriter, packet *ipod.Packet) {
 	switch packet.ID.LingoID() {
 	case general.LingoGeneralID:
 		general.HandleGeneral(packet, packetRW, devGeneral)
