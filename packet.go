@@ -2,12 +2,12 @@
 package ipod
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"reflect"
 )
 
@@ -136,124 +136,64 @@ func catchPanicErr(prefix string, dst *error) {
 	}
 }
 
-func MarshalSmallPacket(w io.Writer, p *RawPacket) (err error) {
-	if p.Length() >= largePacketMinLen {
-		return errors.New("small Packet: payload is too large")
-	}
-	defer catchPanicErr("small Packet marshal: ", &err)
+func MarshalRawPacket(p *RawPacket) (data []byte, err error) {
+	buf := bytes.NewBuffer(make([]byte, 0, p.Length()+3))
 
-	binWrite(w, PacketStartByte)
+	binWrite(buf, PacketStartByte)
 
 	crc := NewCRC8()
-	mw := io.MultiWriter(w, crc)
-	binWrite(mw, byte(p.Length()))
+	mw := io.MultiWriter(buf, crc)
+	if p.Length() > largePacketMinLen {
+		binWrite(mw, byte(0x00))
+		binWrite(mw, uint16(p.Length()))
+	} else {
+		binWrite(mw, byte(p.Length()))
+	}
 	marshalLingoCmdID(mw, p.ID)
 	binWrite(mw, p.Data)
 
-	binWrite(w, crc.Sum8())
+	binWrite(buf, crc.Sum8())
+	data = buf.Bytes()
 
 	return
 }
 
-func UnmarshalSmallPacket(r io.Reader, p *RawPacket) (err error) {
-	defer catchPanicErr("small Packet unmarshal: ", &err)
-
-	var startByte byte
-	binRead(r, &startByte)
-	if startByte != PacketStartByte {
-		return errors.New("small Packet: start byte not found")
+func UnmarshalRawPacket(data []byte) (*RawPacket, error) {
+	if len(data) < 4 {
+		return nil, errors.New("raw packet unmarshal: too small")
 	}
-	crc := NewCRC8()
-	tr := io.TeeReader(r, crc)
-	var payloadLen byte
-	binRead(tr, &payloadLen)
-	if payloadLen < 2 {
-		return errors.New("small Packet: wrong length")
-	}
-	payloadData := make([]byte, int(payloadLen))
-	binRead(tr, payloadData)
-
-	var crcWant byte
-	binRead(r, &crcWant)
-	if crc.Sum8() != crcWant {
-		return fmt.Errorf("small Packet: crc mismatch: want %02x, got %02x", crc.Sum8(), crcWant)
+	if data[0] != PacketStartByte {
+		return nil, errors.New("raw packet unmarshal: start byte not found")
 	}
 
-	payloadBuf := bytes.NewBuffer(payloadData)
+	var payOff int
+	var payLen int
+
+	if data[1] == 0x00 {
+		payLen = int(binary.BigEndian.Uint16(data[2:4]))
+		payOff = 4
+	} else {
+		payLen = int(data[1])
+		payOff = 2
+	}
+	if len(data) < payOff+payLen+1 {
+		return nil, errors.New("raw packet unmarshal: packet short")
+	}
+
+	payload := data[payOff : payOff+payLen]
+	crc := data[payOff+payLen]
+	calcCrc := Checksum(data[1 : payOff+payLen])
+	if crc != calcCrc {
+		return nil, fmt.Errorf("small packet: crc mismatch: recv %02x != calc %02x", crc, calcCrc)
+	}
+
+	payloadBuf := bytes.NewBuffer(payload)
 	var id LingoCmdID
 	unmarshalLingoCmdID(payloadBuf, &id)
-	*p = RawPacket{
+	return &RawPacket{
 		ID:   id,
 		Data: payloadBuf.Bytes(),
-	}
-	return
-
-}
-
-func MarshalLargePacket(w io.Writer, p *RawPacket) (err error) {
-	defer catchPanicErr("large Packet marshal: ", &err)
-
-	if p.Length() < largePacketMinLen {
-		return errors.New("large Packet: payload too small")
-	}
-	if p.Length() > 65535 {
-		return errors.New("large Packet: payload too large")
-	}
-
-	binWrite(w, PacketStartByte)
-	binWrite(w, byte(0x00)) //len marker
-
-	crc := NewCRC8()
-	mw := io.MultiWriter(w, crc)
-	binWrite(mw, uint16(p.Length()))
-	marshalLingoCmdID(mw, p.ID)
-	binWrite(mw, p.Data)
-
-	binWrite(w, crc.Sum8())
-
-	return nil
-}
-
-func UnmarshalLargePacket(r io.Reader, p *RawPacket) (err error) {
-	defer catchPanicErr("large Packet unmarshal: ", &err)
-
-	var startByte byte
-	binRead(r, &startByte)
-
-	if startByte != PacketStartByte {
-		return errors.New("large Packet: start byte not found")
-	}
-
-	var marker byte
-	if err := binRead(r, &marker); marker != 0x00 || err != nil {
-		return errors.New("large Packet: payload len marker not found")
-	}
-
-	crc := NewCRC8()
-	tr := io.TeeReader(r, crc)
-
-	var payloadLen uint16
-	binRead(tr, &payloadLen)
-
-	payloadData := make([]byte, int(payloadLen))
-	binRead(tr, payloadData)
-
-	var crcWant byte
-	binRead(r, &crcWant)
-
-	if crc.Sum8() != crcWant {
-		return fmt.Errorf("large Packet: crc mismatch: want %02x, got %02x", crc.Sum8(), crcWant)
-	}
-
-	payloadBuf := bytes.NewBuffer(payloadData)
-	var id LingoCmdID
-	unmarshalLingoCmdID(payloadBuf, &id)
-
-	*p = RawPacket{
-		ID:   id,
-		Data: payloadBuf.Bytes(),
-	}
-	return nil
+	}, nil
 
 }
 
@@ -273,62 +213,48 @@ func MarshalPacket(w io.Writer, p *Packet) (err error) {
 		binWrite(&payloadBuf, p.Payload)
 	}
 
-	RawPacket := &RawPacket{
+	rawPkt := &RawPacket{
 		ID:   p.ID,
 		Data: payloadBuf.Bytes(),
 	}
 
-	if RawPacket.Length() < largePacketMinLen {
-		return MarshalSmallPacket(w, RawPacket)
-	} else {
-		return MarshalLargePacket(w, RawPacket)
+	rawData, e := MarshalRawPacket(rawPkt)
+	if e != nil {
+		err = e
+		return
 	}
+	_, err = w.Write(rawData)
+	return
 
 }
 
-func UnmarshalPacket(r io.Reader, pp *Packet) (err error) {
+func UnmarshalPacket(r io.Reader, p *Packet) (err error) {
 	defer catchPanicErr(" Packet unmarshal: ", &err)
 
-	br := bufio.NewReader(r)
-	for {
-		b, err := br.ReadByte()
-		if err != nil {
-			return err
-		}
-		if b == PacketStartByte {
-			br.UnreadByte()
-			break
-		}
+	rawData, e := ioutil.ReadAll(r)
+	if e != nil {
+		err = e
+		return
 	}
-	header, err := br.Peek(2)
-	if err != nil {
-		return err
+	rawPkt, e := UnmarshalRawPacket(rawData)
+	if e != nil {
+		err = e
+		return
 	}
 
-	var p RawPacket
-	if header[1] == 0x00 {
-		if err := UnmarshalLargePacket(br, &p); err != nil {
-			return err
-		}
-	} else {
-		if err := UnmarshalSmallPacket(br, &p); err != nil {
-			return err
-		}
-	}
+	p.ID = rawPkt.ID
 
-	pp.ID = p.ID
-
-	lookup, ok := Lookup(p.ID, len(p.Data))
+	lookup, ok := Lookup(rawPkt.ID, len(rawPkt.Data))
 	if !ok {
-		pp.Payload = UnknownPayload(p.Data)
+		p.Payload = UnknownPayload(rawPkt.Data)
 		return fmt.Errorf("unknown command id/size: %#v", p)
 	}
 
-	dr := bytes.NewReader(p.Data)
+	dr := bytes.NewReader(rawPkt.Data)
 	if lookup.Transaction {
 		var tr Transaction
 		binRead(dr, &tr)
-		pp.Transaction = &tr
+		p.Transaction = &tr
 	}
 
 	if d, ok := lookup.Payload.(PayloadUnmarshaler); ok {
@@ -339,7 +265,7 @@ func UnmarshalPacket(r io.Reader, pp *Packet) (err error) {
 	} else {
 		binRead(dr, lookup.Payload)
 	}
-	pp.Payload = reflect.ValueOf(lookup.Payload).Elem().Interface()
+	p.Payload = reflect.ValueOf(lookup.Payload).Elem().Interface()
 	return nil
 
 }
