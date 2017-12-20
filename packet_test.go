@@ -2,31 +2,31 @@ package ipod_test
 
 import (
 	"bytes"
-	"io"
+	"reflect"
 	"testing"
 
 	"github.com/oandrew/ipod"
 	_ "github.com/oandrew/ipod/lingo-general"
 )
 
-type ShortWriter struct {
-	max     int
-	written int
-}
+// type ShortWriter struct {
+// 	max     int
+// 	written int
+// }
 
-func (sw *ShortWriter) Write(p []byte) (int, error) {
-	if sw.written+len(p) > sw.max {
-		return 0, io.ErrShortWrite
-	}
-	sw.written += len(p)
-	return len(p), nil
-}
+// func (sw *ShortWriter) Write(p []byte) (int, error) {
+// 	if sw.written+len(p) > sw.max {
+// 		return 0, io.ErrShortWrite
+// 	}
+// 	sw.written += len(p)
+// 	return len(p), nil
+// }
 
-func NewShortWriter(max int) io.Writer {
-	return &ShortWriter{
-		max: max,
-	}
-}
+// func NewShortWriter(max int) io.Writer {
+// 	return &ShortWriter{
+// 		max: max,
+// 	}
+// }
 
 // func TestBinWritePanic(t *testing.T) {
 // 	buf := NewShortWriter(1)
@@ -37,71 +37,68 @@ func NewShortWriter(max int) io.Writer {
 // 	t.Logf("binWrite err = %v", err)
 // }
 
-// func TestMarshalRawPacket(t *testing.T) {
-// 	largeData := bytes.Repeat([]byte{0xee}, 255)
+func TestPacketWriter_WritePacket(t *testing.T) {
+	largeData := bytes.Repeat([]byte{0xee}, 255)
 
-// 	tests := []struct {
-// 		name    string
-// 		pkt     *ipod.Packet
-// 		want    []byte
-// 		wantErr bool
-// 	}{
-// 		//{"nil-data", &ipod.Packet{ipod.NewLingoCmdID(0x01, 0x02), nil, nil},
-// 		//	[]byte{0x01, 0x02}, false},
-// 		{"empty-data", &ipod.Packet{ipod.NewLingoCmdID(0x01, 0x02), nil, []byte{}},
-// 			[]byte{0x01, 0x02}, false},
-// 		{"small-data", &ipod.Packet{ipod.NewLingoCmdID(0x01, 0x02), nil, []byte{0xfd}},
-// 			[]byte{0x01, 0x02, 0xfd}, false},
-// 		{"large-data", &ipod.Packet{ipod.NewLingoCmdID(0x01, 0x02), nil, largeData},
-// 			append([]byte{0x1, 0x02}, largeData...), false},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			got, err := ipod.MarshalPacket(tt.pkt)
-// 			if (err != nil) != tt.wantErr {
-// 				t.Errorf("MarshalSmallPacket() error = %v, wantErr %v", err, tt.wantErr)
-// 				return
-// 			}
-// 			if !reflect.DeepEqual([]byte(got), tt.want) {
-// 				t.Errorf("MarshalSmallPacket() = [% 02x], want [% 02x]", got, tt.want)
-// 			}
-// 		})
-// 	}
-// }
+	tests := []struct {
+		name    string
+		data    []byte
+		want    []byte
+		wantErr bool
+	}{
+		{"no-data", []byte{}, nil, true},
+		{"with-data", []byte{0x01, 0x02, 0xfd}, []byte{0x55, 0x03, 0x01, 0x02, 0xfd, 0xfd}, false},
+		{"large-with-data", append([]byte{0x1, 0x02}, largeData...), append([]byte{0x55, 0x00, 0x01, 0x01, 0x1, 0x02}, append(largeData, 0xe9)...), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			buf := bytes.Buffer{}
+			w := ipod.NewPacketWriter(&buf)
+			err := w.WritePacket(tt.data)
+			got := buf.Bytes()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("PacketWriter.WritePacket() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual([]byte(got), tt.want) {
+				t.Errorf("PacketWriter.WritePacket() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
 
-// func TestUnmarshalRawPacket(t *testing.T) {
-// 	largeData := bytes.Repeat([]byte{0xee}, 255)
+func TestPacketReader_ReadPacket(t *testing.T) {
+	largeData := bytes.Repeat([]byte{0xee}, 255)
 
-// 	tests := []struct {
-// 		name    string
-// 		raw     []byte
-// 		want    *ipod.RawPacket
-// 		wantErr bool
-// 	}{
-// 		{"no-data", []byte{0x55, 0x02, 0x01, 0x02, 256 - 0x05}, &ipod.RawPacket{ipod.NewLingoCmdID(0x01, 0x02), []byte{}}, false},
-// 		{"with-data", []byte{0x55, 0x03, 0x01, 0x02, 0xfd, 0xfd}, &ipod.RawPacket{ipod.NewLingoCmdID(0x01, 0x02), []byte{0xfd}}, false},
-// 		{"bad-crc", []byte{0x55, 0x03, 0x01, 0x02, 0xfd, 0x22}, nil, true},
-// 		{"wrong-start-byte", []byte{0xff, 0x03, 0x01, 0x02, 0xfd, 0xfd}, nil, true},
-// 		{"too-small-payload-length", []byte{0xff, 0x01, 0x01, 0x02, 0xfd, 0xfd}, nil, true},
-// 		{"too-large-payload-length", []byte{0xff, 0x33, 0x01, 0x02, 0xfd, 0xfd}, nil, true},
-// 		{"no-len-marker", []byte{0x55, 0xdd, 0x01, 0x01, 0x1, 0x02}, nil, true},
-// 		{"bad-crc", append([]byte{0x55, 0x00, 0x01, 0x01, 0x1, 0x02}, append(largeData, 0x22)...), nil, true},
-// 		{"with-data", append([]byte{0x55, 0x00, 0x01, 0x01, 0x1, 0x02}, append(largeData, 0xe9)...), &ipod.RawPacket{ipod.NewLingoCmdID(0x01, 0x02), largeData}, false},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			got, err := ipod.UnmarshalRawPacket(tt.raw)
-// 			t.Logf("%+v", got)
-// 			if (err != nil) != tt.wantErr {
-// 				t.Errorf("UnmarshalSmallPacket() error = %v, wantErr %v", err, tt.wantErr)
-// 				return
-// 			}
-// 			if tt.want != nil && !reflect.DeepEqual(got, tt.want) {
-// 				t.Errorf("UnmarshalSmallPacket() = %v, want %v", got, tt.want)
-// 			}
-// 		})
-// 	}
-// }
+	tests := []struct {
+		name    string
+		data    []byte
+		want    []byte
+		wantErr bool
+	}{
+		{"no-data", []byte{0x55, 0x02, 0x01, 0x02, 256 - 0x05}, []byte{0x01, 0x02}, false},
+		{"with-data", []byte{0x55, 0x03, 0x01, 0x02, 0xfd, 0xfd}, []byte{0x01, 0x02, 0xfd}, false},
+		{"bad-crc", []byte{0x55, 0x03, 0x01, 0x02, 0xfd, 0x22}, nil, true},
+		{"wrong-start-byte", []byte{0xff, 0x03, 0x01, 0x02, 0xfd, 0xfd}, nil, true},
+
+		{"large-with-data", append([]byte{0x55, 0x00, 0x01, 0x01, 0x1, 0x02}, append(largeData, 0xe9)...), append([]byte{0x1, 0x02}, largeData...), false},
+		{"large-with-data-short", append([]byte{0x55, 0x00, 0x01, 0x02, 0x1, 0x02}, append(largeData, 0xe9)...), nil, true},
+		{"large-bad-crc", append([]byte{0x55, 0x00, 0x01, 0x01, 0x1, 0x02}, append(largeData, 0x22)...), nil, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := ipod.NewPacketReader(bytes.NewReader(tt.data))
+			got, err := r.ReadPacket()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("PacketReader.ReadPacket() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if tt.want != nil && !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("PacketReader.ReadPacket() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
 
 // func TestMarshalPacket(t *testing.T) {
 // 	tests := []struct {

@@ -16,6 +16,7 @@ const (
 	rawSmallPacketMinLen = 1 + 1 + 2 // start + len + ids
 	rawLargePacketMinLen = 1 + 3 + 2 // start + len + ids
 	largePacketMinLen    = 256
+	minPacketBufSize     = 1024
 )
 
 type PacketReader struct {
@@ -78,12 +79,14 @@ type PacketWriter struct {
 
 func NewPacketWriter(w io.Writer) *PacketWriter {
 	return &PacketWriter{
-		w: bufio.NewWriter(w),
+		w: bufio.NewWriterSize(w, minPacketBufSize),
 	}
 }
 
 func (pw *PacketWriter) WritePacket(pkt []byte) error {
-
+	if len(pkt) == 0 {
+		return fmt.Errorf("packet encode: empty packet")
+	}
 	binary.Write(pw.w, binary.BigEndian, PacketStartByte)
 
 	crc := NewCRC8()

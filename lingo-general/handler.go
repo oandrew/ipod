@@ -176,6 +176,7 @@ func HandleGeneral(req *ipod.Command, tr ipod.CommandWriter, dev DeviceGeneral) 
 
 	case SetiPodPreferences:
 		dev.SetPrefSettingID(msg.PrefClassID, msg.PrefClassSettingID, ipod.ByteToBool(msg.RestoreOnExit))
+		ipod.Respond(req, tr, ackSuccess(req))
 
 	case GetUIMode:
 		ipod.Respond(req, tr, RetUIMode{UIMode: dev.UIMode()})
@@ -191,8 +192,7 @@ func HandleGeneral(req *ipod.Command, tr ipod.CommandWriter, dev DeviceGeneral) 
 		switch msg.AccEndIDPSStatus {
 		case AccEndIDPSStatusContinue:
 			ipod.Respond(req, tr, IDPSStatus{Status: IDPSStatusOK})
-			//*req.Transaction = 0x0001
-			ipod.Respond(req, tr, GetDevAuthenticationInfo{})
+			ipod.Send(tr, GetDevAuthenticationInfo{}, req.Transaction.Delta(1))
 
 			// get dev auth info
 		case AccEndIDPSStatusReset:
