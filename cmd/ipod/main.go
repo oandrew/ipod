@@ -126,7 +126,7 @@ func processFrames(frameTransport ipod.FrameReadWriter) {
 			var inCmd ipod.Command
 			if err := inCmd.UnmarshalBinary(inPacket); err != nil {
 				CommandLogEntry(logrus.NewEntry(log), &inCmd).WithError(err).Errorf("<< CMD DECODE ERROR")
-				continue
+
 			}
 			CommandLogEntry(logrus.NewEntry(log), &inCmd).Infof("<< CMD READ")
 			if log.Level == logrus.DebugLevel {
