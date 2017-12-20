@@ -41,6 +41,13 @@ func (pd *PacketReader) ReadPacket() ([]byte, error) {
 		return nil, io.EOF
 	}
 
+	if header[0] == 0xff && header[1] == PacketStartByte {
+		header[0] = header[1]
+		if _, err := pd.r.Read(header[1:2]); err != nil {
+			return nil, err
+		}
+	}
+
 	if header[0] != PacketStartByte {
 		return nil, errors.New("packet decode: start byte not found")
 	}
