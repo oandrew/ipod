@@ -129,8 +129,8 @@ func HandleExtRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceExtRemo
 		ipod.Respond(req, tr, ackSuccess(req))
 	case GetMonoDisplayImageLimits:
 		ipod.Respond(req, tr, ReturnMonoDisplayImageLimits{
-			MaxWidth:    320,
-			MaxHeight:   240,
+			MaxWidth:    640,
+			MaxHeight:   960,
 			PixelFormat: 0x01,
 		})
 	case GetNumPlayingTracks:
@@ -141,8 +141,8 @@ func HandleExtRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceExtRemo
 	case SelectSortDBRecord:
 	case GetColorDisplayImageLimits:
 		ipod.Respond(req, tr, ReturnColorDisplayImageLimits{
-			MaxWidth:    320,
-			MaxHeight:   240,
+			MaxWidth:    640,
+			MaxHeight:   960,
 			PixelFormat: 0x01,
 		})
 	case ResetDBSelectionHierarchy:
