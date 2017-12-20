@@ -184,6 +184,15 @@ type ArtworkFormat struct {
 type RetArtworkFormats struct {
 	Formats []ArtworkFormat
 }
+
+func (s RetArtworkFormats) MarshalBinary() ([]byte, error) {
+	buf := bytes.Buffer{}
+	for i := range s.Formats {
+		binary.Write(&buf, binary.BigEndian, s.Formats[i])
+	}
+	return buf.Bytes(), nil
+}
+
 type GetTrackArtworkData struct {
 	TrackIndex int32
 	FormatID   uint16
