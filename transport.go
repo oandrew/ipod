@@ -2,7 +2,6 @@ package ipod
 
 import (
 	"bytes"
-	"io"
 )
 
 type FrameReader interface {
@@ -36,22 +35,20 @@ func (d *DummyFrameReadWriter) WriteFrame([]byte) error {
 }
 
 type packetReader struct {
-	r *bytes.Reader
+	r *RawPacketReader
 }
 
 func (pr *packetReader) ReadPacket() (*Packet, error) {
-	if pr.r.Len() == 0 {
-		return nil, io.EOF
+	payload, err := pr.r.ReadPayload()
+	if err != nil {
+		return nil, err
 	}
-
-	var pkt Packet
-	err := UnmarshalPacket(pr.r, &pkt)
-	return &pkt, err
+	return UnmarshalPacket(payload)
 }
 
 func NewPacketReader(frame []byte) PacketReader {
 	return &packetReader{
-		r: bytes.NewReader(frame),
+		r: NewRawPacketReader(bytes.NewReader(frame)),
 	}
 
 }
@@ -67,10 +64,15 @@ func (pb *PacketBuffer) WritePacket(pkt *Packet) error {
 
 type FrameBuilder struct {
 	buf *bytes.Buffer
+	w   *RawPacketWriter
 }
 
 func (fb *FrameBuilder) WritePacket(pkt *Packet) error {
-	return MarshalPacket(fb.buf, pkt)
+	payload, err := MarshalPacket(pkt)
+	if err != nil {
+		return err
+	}
+	return fb.w.WritePayload(payload)
 }
 
 func (fb *FrameBuilder) Frame() []byte {
@@ -82,7 +84,9 @@ func (fb *FrameBuilder) Reset() {
 }
 
 func NewFrameBuilder() *FrameBuilder {
+	buf := bytes.NewBuffer(make([]byte, 0, 1024))
 	return &FrameBuilder{
-		buf: bytes.NewBuffer(make([]byte, 0, 1024)),
+		buf: buf,
+		w:   NewRawPacketWriter(buf),
 	}
 }
