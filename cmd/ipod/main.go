@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -92,8 +93,6 @@ func main() {
 }
 
 func processFrames(frameTransport ipod.FrameReadWriter) {
-	frameBuilder := ipod.NewFrameBuilder()
-
 	for {
 		inFrame, err := frameTransport.ReadFrame()
 		if err != nil {
@@ -109,43 +108,61 @@ func processFrames(frameTransport ipod.FrameReadWriter) {
 			log.Debug(spew.Sdump(inFrame))
 		}
 
-		packetReader := ipod.NewPacketReader(inFrame)
+		packetReader := ipod.NewPacketReader(bytes.NewReader(inFrame))
 		for {
 			inPacket, err := packetReader.ReadPacket()
-			inPktLogE := PacketLogEntry(logrus.NewEntry(log), inPacket)
-
 			if err != nil {
 				if err == io.EOF {
 					break
 				}
-				inPktLogE.WithError(err).Errorf("<< PACKET READ ERROR")
+				log.WithError(err).Errorf("<< PACKET READ ERROR")
 				continue
 			}
-			inPktLogE.Infof("<< PACKET READ")
+			log.Infof("<< PACKET READ")
 			if log.Level == logrus.DebugLevel {
 				log.Debug(spew.Sdump(inPacket))
 			}
 
-			packetBuf := ipod.PacketBuffer{}
-			//todo: check return error
-			handlePacket(&packetBuf, inPacket)
-			if len(packetBuf.Packets) == 0 {
+			var inCmd ipod.Command
+			if err := inCmd.UnmarshalBinary(inPacket); err != nil {
+				CommandLogEntry(logrus.NewEntry(log), &inCmd).WithError(err).Errorf("<< CMD DECODE ERROR")
 				continue
 			}
-			frameBuilder.Reset()
-			for i := range packetBuf.Packets {
-				outPacket := packetBuf.Packets[i]
-				outPktLogE := PacketLogEntry(logrus.NewEntry(log), outPacket)
-				if err := frameBuilder.WritePacket(outPacket); err != nil {
-					outPktLogE.WithError(err).Errorf(">> PACKET WRITE ERROR")
-				}
-				outPktLogE.Infof(">> PACKET WRITE")
-				if log.Level == logrus.DebugLevel {
-					log.Debug(spew.Sdump(outPacket.Payload))
-				}
+			CommandLogEntry(logrus.NewEntry(log), &inCmd).Infof("<< CMD READ")
+			if log.Level == logrus.DebugLevel {
+				log.Debug(spew.Sdump(inCmd))
 			}
-			outFrame := frameBuilder.Frame()
-			if len(outFrame) > 0 {
+
+			cmdBuf := ipod.CmdBuffer{}
+			//todo: check return error
+			handlePacket(&cmdBuf, &inCmd)
+			if len(cmdBuf.Commands) == 0 {
+				continue
+			}
+			frameBuf := bytes.Buffer{}
+			packetWriter := ipod.NewPacketWriter(&frameBuf)
+			for i := range cmdBuf.Commands {
+				outCmd := cmdBuf.Commands[i]
+				CommandLogEntry(logrus.NewEntry(log), outCmd).Infof(">> CMD WRITE")
+				if log.Level == logrus.DebugLevel {
+					log.Debug(spew.Sdump(outCmd))
+				}
+
+				outPacket, err := outCmd.MarshalBinary()
+				if err != nil {
+					log.WithError(err).Errorf(">> CMD ENCODE ERROR")
+					continue
+				}
+
+				log.Infof(">> PACKET WRITE")
+				if log.Level == logrus.DebugLevel {
+					log.Debug(spew.Sdump(outPacket))
+				}
+				packetWriter.WritePacket(outPacket)
+			}
+
+			if frameBuf.Len() > 0 {
+				outFrame := frameBuf.Bytes()
 				outFrameLogE := FrameLogEntry(logrus.NewEntry(log), outFrame)
 				if err := frameTransport.WriteFrame(outFrame); err != nil {
 					outFrameLogE.WithError(err).Errorf(">> FRAME WRITE ERROR")
@@ -164,21 +181,21 @@ func processFrames(frameTransport ipod.FrameReadWriter) {
 
 var devGeneral = &DevGeneral{}
 
-func handlePacket(packetRW ipod.PacketWriter, packet *ipod.Packet) {
-	switch packet.ID.LingoID() {
+func handlePacket(cmdWriter ipod.CommandWriter, cmd *ipod.Command) {
+	switch cmd.ID.LingoID() {
 	case general.LingoGeneralID:
-		general.HandleGeneral(packet, packetRW, devGeneral)
-		if _, ok := packet.Payload.(general.RetDevAuthenticationSignature); ok {
-			audio.Start(packetRW)
+		general.HandleGeneral(cmd, cmdWriter, devGeneral)
+		if _, ok := cmd.Payload.(general.RetDevAuthenticationSignature); ok {
+			audio.Start(cmdWriter)
 		}
 	case simpleremote.LingoSimpleRemotelID:
 		//todo
 		log.Warn("Lingo SimpleRemote is not supported yet")
 	case dispremote.LingoDisplayRemoteID:
-		dispremote.HandleDispRemote(packet, packetRW, nil)
+		dispremote.HandleDispRemote(cmd, cmdWriter, nil)
 	case extremote.LingoExtRemotelID:
-		extremote.HandleExtRemote(packet, packetRW, nil)
+		extremote.HandleExtRemote(cmd, cmdWriter, nil)
 	case audio.LingoAudioID:
-		audio.HandleAudio(packet, packetRW, nil)
+		audio.HandleAudio(cmd, cmdWriter, nil)
 	}
 }

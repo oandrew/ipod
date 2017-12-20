@@ -6,8 +6,6 @@ import (
 	"encoding"
 	"encoding/binary"
 	"errors"
-	"io"
-	"io/ioutil"
 
 	"github.com/oandrew/ipod"
 )
@@ -138,9 +136,8 @@ type ReturniPodName struct {
 	Name []byte
 }
 
-func (s ReturniPodName) MarshalPayload(w io.Writer) error {
-	w.Write(s.Name)
-	return nil
+func (s ReturniPodName) MarshalBinary() ([]byte, error) {
+	return s.Name, nil
 }
 
 type RequestiPodSoftwareVersion struct{}
@@ -156,9 +153,8 @@ type ReturniPodSerialNum struct {
 	Serial []byte
 }
 
-func (s ReturniPodSerialNum) MarshalPayload(w io.Writer) error {
-	w.Write(s.Serial)
-	return nil
+func (s ReturniPodSerialNum) MarshalBinary() ([]byte, error) {
+	return s.Serial, nil
 }
 
 type RequestLingoProtocolVersion struct {
@@ -198,34 +194,20 @@ type RetDevAuthenticationInfo struct {
 	CertData           []byte
 }
 
-func (s *RetDevAuthenticationInfo) UnmarshalPayload(r io.Reader) error {
-	br := bufio.NewReader(r)
-	var err error
-	s.Major, err = br.ReadByte()
-	if err != nil {
-		return err
+func (s *RetDevAuthenticationInfo) UnmarshalBinary(r []byte) error {
+	if len(r) < 2 {
+		return errors.New("short packet")
 	}
-
-	s.Minor, err = br.ReadByte()
-	if err != nil {
-		return err
-	}
+	s.Major, s.Minor = r[0], r[1]
 
 	if s.Major >= 0x02 {
-		s.CertCurrentSection, err = br.ReadByte()
-		if err != nil {
-			return err
+		if len(r) < 5 {
+			return errors.New("short packet")
 		}
+		s.CertCurrentSection, s.CertMaxSection = r[2], r[3]
 
-		s.CertMaxSection, err = br.ReadByte()
-		if err != nil {
-			return err
-		}
-
-		s.CertData, err = ioutil.ReadAll(br)
-		if err != nil {
-			return err
-		}
+		s.CertData = make([]byte, len(r[4:]))
+		copy(s.CertData, r[4:])
 	}
 
 	return nil
@@ -255,12 +237,9 @@ type RetDevAuthenticationSignature struct {
 	Signature []byte
 }
 
-func (s *RetDevAuthenticationSignature) UnmarshalPayload(r io.Reader) error {
-	var err error
-	s.Signature, err = ioutil.ReadAll(r)
-	if err != nil {
-		return err
-	}
+func (s *RetDevAuthenticationSignature) UnmarshalBinary(r []byte) error {
+	s.Signature = make([]byte, len(r))
+	copy(s.Signature, r)
 	return nil
 }
 
@@ -526,8 +505,8 @@ type SetFIDTokenValues struct {
 	FIDTokenValues    []FIDTokenValue
 }
 
-func (s *SetFIDTokenValues) UnmarshalPayload(r io.Reader) error {
-	br := bufio.NewReader(r)
+func (s *SetFIDTokenValues) UnmarshalBinary(data []byte) error {
+	br := bytes.NewReader(data)
 	var err error
 	s.NumFIDTokenValues, err = br.ReadByte()
 	if err != nil {
@@ -608,10 +587,8 @@ type RetFIDTokenValueACKs struct {
 	FIDTokenValueACKs    []byte
 }
 
-func (s RetFIDTokenValueACKs) MarshalPayload(w io.Writer) error {
-	w.Write([]byte{s.NumFIDTokenValueACKs})
-	w.Write(s.FIDTokenValueACKs)
-	return nil
+func (s RetFIDTokenValueACKs) MarshalBinary() ([]byte, error) {
+	return append([]byte{s.NumFIDTokenValueACKs}, s.FIDTokenValueACKs...), nil
 
 }
 

@@ -3,10 +3,10 @@ package ipod_test
 import (
 	"bytes"
 	"io"
-	"reflect"
 	"testing"
 
 	"github.com/oandrew/ipod"
+	_ "github.com/oandrew/ipod/lingo-general"
 )
 
 type ShortWriter struct {
@@ -37,37 +37,37 @@ func NewShortWriter(max int) io.Writer {
 // 	t.Logf("binWrite err = %v", err)
 // }
 
-func TestMarshalRawPacket(t *testing.T) {
-	largeData := bytes.Repeat([]byte{0xee}, 255)
+// func TestMarshalRawPacket(t *testing.T) {
+// 	largeData := bytes.Repeat([]byte{0xee}, 255)
 
-	tests := []struct {
-		name    string
-		pkt     *ipod.Packet
-		want    []byte
-		wantErr bool
-	}{
-		//{"nil-data", &ipod.Packet{ipod.NewLingoCmdID(0x01, 0x02), nil, nil},
-		//	[]byte{0x01, 0x02}, false},
-		{"empty-data", &ipod.Packet{ipod.NewLingoCmdID(0x01, 0x02), nil, []byte{}},
-			[]byte{0x01, 0x02}, false},
-		{"small-data", &ipod.Packet{ipod.NewLingoCmdID(0x01, 0x02), nil, []byte{0xfd}},
-			[]byte{0x01, 0x02, 0xfd}, false},
-		{"large-data", &ipod.Packet{ipod.NewLingoCmdID(0x01, 0x02), nil, largeData},
-			append([]byte{0x1, 0x02}, largeData...), false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := ipod.MarshalPacket(tt.pkt)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("MarshalSmallPacket() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual([]byte(got), tt.want) {
-				t.Errorf("MarshalSmallPacket() = [% 02x], want [% 02x]", got, tt.want)
-			}
-		})
-	}
-}
+// 	tests := []struct {
+// 		name    string
+// 		pkt     *ipod.Packet
+// 		want    []byte
+// 		wantErr bool
+// 	}{
+// 		//{"nil-data", &ipod.Packet{ipod.NewLingoCmdID(0x01, 0x02), nil, nil},
+// 		//	[]byte{0x01, 0x02}, false},
+// 		{"empty-data", &ipod.Packet{ipod.NewLingoCmdID(0x01, 0x02), nil, []byte{}},
+// 			[]byte{0x01, 0x02}, false},
+// 		{"small-data", &ipod.Packet{ipod.NewLingoCmdID(0x01, 0x02), nil, []byte{0xfd}},
+// 			[]byte{0x01, 0x02, 0xfd}, false},
+// 		{"large-data", &ipod.Packet{ipod.NewLingoCmdID(0x01, 0x02), nil, largeData},
+// 			append([]byte{0x1, 0x02}, largeData...), false},
+// 	}
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			got, err := ipod.MarshalPacket(tt.pkt)
+// 			if (err != nil) != tt.wantErr {
+// 				t.Errorf("MarshalSmallPacket() error = %v, wantErr %v", err, tt.wantErr)
+// 				return
+// 			}
+// 			if !reflect.DeepEqual([]byte(got), tt.want) {
+// 				t.Errorf("MarshalSmallPacket() = [% 02x], want [% 02x]", got, tt.want)
+// 			}
+// 		})
+// 	}
+// }
 
 // func TestUnmarshalRawPacket(t *testing.T) {
 // 	largeData := bytes.Repeat([]byte{0xee}, 255)
@@ -173,10 +173,18 @@ var shortFrameB = []byte{0x14, 0x00, 0x55, 0x88, 0x00, 0x15, 0x00, 0x06, 0x02, 0
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00}
 
+var shortFrame2 = []byte{0x0f, 0x00, 0x55, 0x05, 0x00, 0x4b, 0x00, 0x04, 0x0d, 0x9f, 0x00, 0x00, 0x00}
+
 func BenchmarkUnmarshalRawPacket(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		r := ipod.NewPacketReader(shortFrameB)
-		r.ReadPacket()
+		r := ipod.NewPacketReader(bytes.NewReader(shortFrameB[2:]))
+		pkt, err := r.ReadPacket()
+		if err != nil {
+			b.Fatal(err)
+		}
+		_ = pkt
+		var cmd ipod.Command
+		cmd.UnmarshalBinary(pkt)
 	}
 }
 

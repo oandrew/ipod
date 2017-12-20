@@ -30,15 +30,15 @@ type DeviceGeneral interface {
 	MaxPayload() uint16
 }
 
-func ackSuccess(req *ipod.Packet) ACK {
+func ackSuccess(req *ipod.Command) ACK {
 	return ACK{Status: ACKStatusSuccess, CmdID: uint8(req.ID.CmdID())}
 }
 
-func ackPending(req *ipod.Packet, maxWait uint32) ACKPending {
+func ackPending(req *ipod.Command, maxWait uint32) ACKPending {
 	return ACKPending{Status: ACKStatusPending, CmdID: uint8(req.ID.CmdID()), MaxWait: maxWait}
 }
 
-func ack(req *ipod.Packet, status ACKStatus) ACK {
+func ack(req *ipod.Command, status ACKStatus) ACK {
 	return ACK{Status: status, CmdID: uint8(req.ID.CmdID())}
 }
 
@@ -80,7 +80,7 @@ func ackFIDTokens(tokens SetFIDTokenValues) RetFIDTokenValueACKs {
 	return resp
 }
 
-func HandleGeneral(req *ipod.Packet, tr ipod.PacketWriter, dev DeviceGeneral) error {
+func HandleGeneral(req *ipod.Command, tr ipod.CommandWriter, dev DeviceGeneral) error {
 	switch msg := req.Payload.(type) {
 	case RequestRemoteUIMode:
 		ipod.Respond(req, tr, ReturnRemoteUIMode{

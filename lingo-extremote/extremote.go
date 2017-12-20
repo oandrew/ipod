@@ -1,8 +1,8 @@
 package extremote
 
 import (
+	"bytes"
 	"encoding/binary"
-	"io"
 
 	"github.com/oandrew/ipod"
 )
@@ -161,10 +161,15 @@ type ReturnIndexedPlayingTrackInfo struct {
 	Info     interface{}
 }
 
-func (s ReturnIndexedPlayingTrackInfo) MarshalPayload(w io.Writer) error {
-	binary.Write(w, binary.BigEndian, s.InfoType)
-	binary.Write(w, binary.BigEndian, s.Info)
-	return nil
+func (s ReturnIndexedPlayingTrackInfo) MarshalBinary() ([]byte, error) {
+	w := bytes.Buffer{}
+	if err := binary.Write(&w, binary.BigEndian, s.InfoType); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(&w, binary.BigEndian, s.Info); err != nil {
+		return nil, err
+	}
+	return w.Bytes(), nil
 }
 
 type GetArtworkFormats struct {
@@ -265,9 +270,8 @@ type ReturnIndexedPlayingTrackTitle struct {
 	Title []byte
 }
 
-func (s ReturnIndexedPlayingTrackTitle) MarshalPayload(w io.Writer) error {
-	w.Write(s.Title)
-	return nil
+func (s ReturnIndexedPlayingTrackTitle) MarshalBinary() ([]byte, error) {
+	return s.Title, nil
 }
 
 type GetIndexedPlayingTrackArtistName struct {
@@ -277,9 +281,8 @@ type ReturnIndexedPlayingTrackArtistName struct {
 	ArtistName []byte
 }
 
-func (s ReturnIndexedPlayingTrackArtistName) MarshalPayload(w io.Writer) error {
-	w.Write(s.ArtistName)
-	return nil
+func (s ReturnIndexedPlayingTrackArtistName) MarshalBinary() ([]byte, error) {
+	return s.ArtistName, nil
 }
 
 type GetIndexedPlayingTrackAlbumName struct {
@@ -289,9 +292,8 @@ type ReturnIndexedPlayingTrackAlbumName struct {
 	AlbumName []byte
 }
 
-func (s ReturnIndexedPlayingTrackAlbumName) MarshalPayload(w io.Writer) error {
-	w.Write(s.AlbumName)
-	return nil
+func (s ReturnIndexedPlayingTrackAlbumName) MarshalBinary() ([]byte, error) {
+	return s.AlbumName, nil
 }
 
 type SetPlayStatusChangeNotification struct {

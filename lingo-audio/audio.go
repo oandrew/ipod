@@ -1,6 +1,7 @@
 package audio
 
 import (
+	"bytes"
 	"encoding/binary"
 	"io"
 
@@ -42,7 +43,8 @@ type RetAccSampleRateCaps struct {
 	SampleRates []uint32
 }
 
-func (s *RetAccSampleRateCaps) UnmarshalPayload(r io.Reader) error {
+func (s *RetAccSampleRateCaps) UnmarshalBinary(data []byte) error {
+	r := bytes.NewReader(data)
 	for {
 		var rate uint32
 		if err := binary.Read(r, binary.BigEndian, &rate); err != nil {

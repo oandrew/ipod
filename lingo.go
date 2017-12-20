@@ -2,6 +2,7 @@ package ipod
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"reflect"
@@ -41,28 +42,43 @@ func cmdIDLen(lingoID uint16) int {
 	}
 }
 
-func marshalLingoCmdID(w io.Writer, id LingoCmdID) {
-	binWrite(w, byte(id.LingoID()))
+func marshalLingoCmdID(w io.Writer, id LingoCmdID) error {
+	err := binary.Write(w, binary.BigEndian, byte(id.LingoID()))
+	if err != nil {
+		return err
+	}
 	switch cmdIDLen(id.LingoID()) {
 	case 2:
-		binWrite(w, uint16(id.CmdID()))
+		return binary.Write(w, binary.BigEndian, uint16(id.CmdID()))
 	default:
-		binWrite(w, byte(id.CmdID()))
+		return binary.Write(w, binary.BigEndian, byte(id.CmdID()))
 	}
 }
 
-func unmarshalLingoCmdID(r io.Reader, id *LingoCmdID) {
+func unmarshalLingoCmdID(r io.Reader, id *LingoCmdID) error {
 	var lingoID byte
-	binRead(r, &lingoID)
+	err := binary.Read(r, binary.BigEndian, &lingoID)
+	if err != nil {
+		return err
+	}
+
 	switch cmdIDLen(uint16(lingoID)) {
 	case 2:
 		var cmdID uint16
-		binRead(r, &cmdID)
+		err := binary.Read(r, binary.BigEndian, &cmdID)
+		if err != nil {
+			return err
+		}
 		*id = NewLingoCmdID(uint16(lingoID), uint16(cmdID))
+		return nil
 	default:
 		var cmdID uint8
-		binRead(r, &cmdID)
+		err := binary.Read(r, binary.BigEndian, &cmdID)
+		if err != nil {
+			return err
+		}
 		*id = NewLingoCmdID(uint16(lingoID), uint16(cmdID))
+		return nil
 	}
 }
 

@@ -15,14 +15,13 @@ type DeviceAudio interface {
 // 	return ACKPending{Status: ACKStatusPending, CmdID: uint8(req.ID.CmdID()), MaxWait: maxWait}
 // }
 
-func Start(tr ipod.PacketWriter) {
-	p, _ := ipod.BuildPacket(GetAccSampleRateCaps{})
-	p = p.WithTransaction(999)
-
-	tr.WritePacket(p)
+func Start(tr ipod.CommandWriter) {
+	p, _ := ipod.BuildCommand(GetAccSampleRateCaps{})
+	p.Transaction = ipod.NewTransaction(999)
+	tr.WriteCommand(p)
 }
 
-func HandleAudio(req *ipod.Packet, tr ipod.PacketWriter, dev DeviceAudio) error {
+func HandleAudio(req *ipod.Command, tr ipod.CommandWriter, dev DeviceAudio) error {
 	switch msg := req.Payload.(type) {
 	case AccAck:
 	case RetAccSampleRateCaps:
