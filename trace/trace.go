@@ -61,7 +61,7 @@ func (m Msg) MarshalText() ([]byte, error) {
 
 func (m *Msg) UnmarshalText(text []byte) error {
 	if len(text) < 4 {
-		return fmt.Errorf("trace unmarshal: too short")
+		return fmt.Errorf("trace unmarshal: short msg")
 	}
 	if err := m.Dir.UnmarshalText(text[0:1]); err != nil {
 		return err
@@ -94,7 +94,11 @@ func (r *Reader) ReadMsg(m *Msg) error {
 		return r.err
 	}
 	for r.s.Scan() {
-		err := m.UnmarshalText(r.s.Bytes())
+		text := r.s.Bytes()
+		if len(text) == 0 {
+			continue
+		}
+		err := m.UnmarshalText(text)
 		return err
 	}
 	r.err = r.s.Err()
