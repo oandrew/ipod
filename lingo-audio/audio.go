@@ -59,6 +59,12 @@ func (s *RetAccSampleRateCaps) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
+func (s *RetAccSampleRateCaps) MarshalBinary() ([]byte, error) {
+	buf := bytes.Buffer{}
+	err := binary.Write(&buf, binary.BigEndian, s.SampleRates)
+	return buf.Bytes(), err
+}
+
 type TrackNewAudioAttributes struct {
 	SampleRate       uint32
 	SoundCheckValue  uint32

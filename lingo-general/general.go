@@ -140,6 +140,12 @@ func (s ReturniPodName) MarshalBinary() ([]byte, error) {
 	return s.Name, nil
 }
 
+func (s ReturniPodName) UnmarshalBinary(data []byte) error {
+	s.Name = make([]byte, len(data))
+	copy(s.Name, data)
+	return nil
+}
+
 type RequestiPodSoftwareVersion struct{}
 
 type ReturniPodSoftwareVersion struct {
@@ -155,6 +161,12 @@ type ReturniPodSerialNum struct {
 
 func (s ReturniPodSerialNum) MarshalBinary() ([]byte, error) {
 	return s.Serial, nil
+}
+
+func (s ReturniPodSerialNum) UnmarshalBinary(data []byte) error {
+	s.Serial = make([]byte, len(data))
+	copy(s.Serial, data)
+	return nil
 }
 
 type RequestLingoProtocolVersion struct {
@@ -590,6 +602,18 @@ type RetFIDTokenValueACKs struct {
 func (s RetFIDTokenValueACKs) MarshalBinary() ([]byte, error) {
 	return append([]byte{s.NumFIDTokenValueACKs}, s.FIDTokenValueACKs...), nil
 
+}
+
+func (s RetFIDTokenValueACKs) UnmarshalBinary(data []byte) error {
+	if len(data) < 2 {
+		return errors.New("RetFIDTokenValueACKs: short payload")
+	}
+	s.NumFIDTokenValueACKs = data[0]
+	if len(data) > 1 {
+		s.FIDTokenValueACKs = make([]byte, len(data[1:]))
+		copy(s.FIDTokenValueACKs, data[1:])
+	}
+	return nil
 }
 
 type AccEndIDPSStatus uint8

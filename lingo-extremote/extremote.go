@@ -3,6 +3,7 @@ package extremote
 import (
 	"bytes"
 	"encoding/binary"
+	"io"
 
 	"github.com/oandrew/ipod"
 )
@@ -172,6 +173,26 @@ func (s ReturnIndexedPlayingTrackInfo) MarshalBinary() ([]byte, error) {
 	return w.Bytes(), nil
 }
 
+func (s ReturnIndexedPlayingTrackInfo) UnmarshalBinary(data []byte) error {
+	r := bytes.NewReader(data)
+	if err := binary.Read(r, binary.BigEndian, &s.InfoType); err != nil {
+		return err
+	}
+
+	switch s.InfoType {
+	case TrackInfoCaps:
+		s.Info = &TrackCaps{}
+	case TrackInfoDescription, TrackInfoLyrics:
+		s.Info = &TrackLongText{}
+	default:
+		s.Info = &struct{}{}
+	}
+	if err := binary.Read(r, binary.BigEndian, s.Info); err != nil {
+		return err
+	}
+	return nil
+}
+
 type GetArtworkFormats struct {
 }
 
@@ -191,6 +212,23 @@ func (s RetArtworkFormats) MarshalBinary() ([]byte, error) {
 		binary.Write(&buf, binary.BigEndian, s.Formats[i])
 	}
 	return buf.Bytes(), nil
+}
+
+func (s RetArtworkFormats) UnmarshalBinary(data []byte) error {
+	r := bytes.NewReader(data)
+
+	for {
+		var f ArtworkFormat
+		err := binary.Read(r, binary.BigEndian, &f)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		s.Formats = append(s.Formats, f)
+	}
+	return nil
 }
 
 type GetTrackArtworkData struct {
@@ -283,6 +321,12 @@ func (s ReturnIndexedPlayingTrackTitle) MarshalBinary() ([]byte, error) {
 	return s.Title, nil
 }
 
+func (s ReturnIndexedPlayingTrackTitle) UnmarshalBinary(data []byte) error {
+	s.Title = make([]byte, len(data))
+	copy(s.Title, data)
+	return nil
+}
+
 type GetIndexedPlayingTrackArtistName struct {
 	TrackIndex int32
 }
@@ -294,6 +338,12 @@ func (s ReturnIndexedPlayingTrackArtistName) MarshalBinary() ([]byte, error) {
 	return s.ArtistName, nil
 }
 
+func (s ReturnIndexedPlayingTrackArtistName) UnmarshalBinary(data []byte) error {
+	s.ArtistName = make([]byte, len(data))
+	copy(s.ArtistName, data)
+	return nil
+}
+
 type GetIndexedPlayingTrackAlbumName struct {
 	TrackIndex int32
 }
@@ -303,6 +353,12 @@ type ReturnIndexedPlayingTrackAlbumName struct {
 
 func (s ReturnIndexedPlayingTrackAlbumName) MarshalBinary() ([]byte, error) {
 	return s.AlbumName, nil
+}
+
+func (s ReturnIndexedPlayingTrackAlbumName) UnmarshalBinary(data []byte) error {
+	s.AlbumName = make([]byte, len(data))
+	copy(s.AlbumName, data)
+	return nil
 }
 
 type SetPlayStatusChangeNotification struct {
