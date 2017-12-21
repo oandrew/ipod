@@ -3,6 +3,7 @@ package trace
 import (
 	"bufio"
 	"bytes"
+	"container/list"
 	"fmt"
 	"io"
 	//"github.com/oandrew/ipod/trace"
@@ -164,94 +165,90 @@ func NewTracer(tw io.Writer, rw io.ReadWriter) io.ReadWriter {
 	}
 }
 
-type TraceSplitReader struct {
-	r             *Reader
-	inMsg, outMsg []*Msg
+type queueItem struct {
+	msg        *Msg
+	allE, dirE *list.Element
 }
 
-func NewTraceSplitReader(r *Reader) *TraceSplitReader {
-	return &TraceSplitReader{
-		r: r,
-	}
+type Queue struct {
+	all     list.List
+	in, out list.List
 }
 
-func (tsr *TraceSplitReader) queue(dir Dir) *[]*Msg {
+func (q *Queue) dirList(dir Dir) *list.List {
 	switch dir {
 	case DirIn:
-		return &tsr.inMsg
+		return &q.in
 	case DirOut:
-		return &tsr.outMsg
+		return &q.out
 	}
-	return nil
+	panic("bad dir")
 }
 
-func (tsr *TraceSplitReader) NextDir() (Dir, error) {
-	switch {
-	case len(tsr.inMsg) > 0 && len(tsr.outMsg) > 0:
-		if tsr.inMsg[0].TS < tsr.outMsg[0].TS {
-			return DirIn, nil
-		} else {
-			return DirOut, nil
-		}
-	case len(tsr.inMsg) > 0:
-		return DirIn, nil
-	case len(tsr.outMsg) > 0:
-		return DirOut, nil
-	default:
-		var m Msg
-		err := tsr.r.ReadMsg(&m)
-		if err != nil {
-			return Dir(0xff), err
-		}
-
-		sq := tsr.queue(m.Dir)
-		*sq = append(*sq, &m)
-		return m.Dir, nil
-
-	}
+func (q *Queue) Enqueue(msg *Msg) {
+	qi := &queueItem{msg: msg}
+	qi.allE = q.all.PushBack(qi)
+	qi.dirE = q.dirList(msg.Dir).PushBack(qi)
 }
 
-func (tsr *TraceSplitReader) Next(dir Dir) (*Msg, error) {
-	q := tsr.queue(dir)
-	if q == nil {
-		return nil, io.EOF
+func (q *Queue) Head() *Msg {
+	qie := q.all.Front()
+	if qie == nil {
+		return nil
 	}
-	if len(*q) > 0 {
-		var m *Msg
-		m, *q = (*q)[0], (*q)[1:]
-		return m, nil
+	qi, ok := qie.Value.(*queueItem)
+	if !ok {
+		return nil
 	}
-	for {
-		var m Msg
-		err := tsr.r.ReadMsg(&m)
-		if err != nil {
-			return nil, err
-		}
-		if m.Dir == dir {
-			return &m, nil
-		} else {
-			sq := tsr.queue(m.Dir)
-			*sq = append(*sq, &m)
-		}
-	}
+	return qi.msg
 }
 
-type traceDirReader struct {
-	sr  *TraceSplitReader
+func (q *Queue) Dequeue() *Msg {
+	qie := q.all.Front()
+	if qie == nil {
+		return nil
+	}
+	qi, ok := qie.Value.(*queueItem)
+	if !ok {
+		return nil
+	}
+	q.all.Remove(qi.allE)
+	q.dirList(qi.msg.Dir).Remove(qi.dirE)
+
+	return qi.msg
+}
+
+func (q *Queue) DequeueDir(dir Dir) *Msg {
+	qie := q.dirList(dir).Front()
+	if qie == nil {
+		return nil
+	}
+	qi, ok := qie.Value.(*queueItem)
+	if !ok {
+		return nil
+	}
+	q.all.Remove(qi.allE)
+	q.dirList(qi.msg.Dir).Remove(qi.dirE)
+
+	return qi.msg
+}
+
+type queueDirReader struct {
+	q   *Queue
 	dir Dir
 }
 
-func NewTraceDirReader(sr *TraceSplitReader, dir Dir) io.Reader {
-	return &traceDirReader{
-		sr:  sr,
+func NewQueueDirReader(q *Queue, dir Dir) io.Reader {
+	return &queueDirReader{
+		q:   q,
 		dir: dir,
 	}
 }
 
-func (tdr *traceDirReader) Read(p []byte) (n int, err error) {
-	msg, err := tdr.sr.Next(tdr.dir)
-	if err != nil {
-		return 0, err
+func (qdr *queueDirReader) Read(p []byte) (n int, err error) {
+	msg := qdr.q.DequeueDir(qdr.dir)
+	if msg == nil {
+		return 0, io.EOF
 	}
 	return copy(p, msg.Data), nil
 }

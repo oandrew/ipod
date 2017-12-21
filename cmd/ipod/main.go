@@ -23,12 +23,6 @@ import (
 	"github.com/oandrew/ipod/trace"
 )
 
-// var devicePath = flag.String("d", "", "iap device i.e. /dev/iap0")
-// var readTracePath = flag.String("r", "", "Respond to requests  from a trace file instead of device")
-// var writeTracePath = flag.String("w", "", "Save traces to a file")
-
-// var verbose = flag.Bool("v", false, "Enable verbose logging")
-
 var log = logrus.StandardLogger()
 
 func openDevice(path string) (*os.File, error) {
@@ -49,7 +43,6 @@ func openTraceFile(path string) (*os.File, error) {
 		return nil, err
 	}
 	return f, nil
-	//return nil, ReadWriter{NewTraceInputReader(t), ioutil.Discard}
 }
 
 func newTraceFile(path string) (*os.File, error) {
@@ -325,13 +318,26 @@ func dirPrefix(dir trace.Dir, text string) string {
 	}
 }
 func dumpTrace(tr *trace.Reader) {
-	tsr := trace.NewTraceSplitReader(tr)
+	q := trace.Queue{}
 	for {
-		dir, err := tsr.NextDir()
-		if err != nil {
+		var msg trace.Msg
+		err := tr.ReadMsg(&msg)
+		if err == io.EOF {
 			break
 		}
-		tdr := trace.NewTraceDirReader(tsr, dir)
+		if err != nil {
+			log.Fatal(err)
+		}
+		q.Enqueue(&msg)
+	}
+
+	for {
+		head := q.Head()
+		if head == nil {
+			break
+		}
+		dir := head.Dir
+		tdr := trace.NewQueueDirReader(&q, dir)
 		d := hid.NewDecoderDefault(hid.NewRawReportReader(tdr))
 
 		frame, err := d.ReadFrame()

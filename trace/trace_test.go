@@ -142,49 +142,7 @@ var testReports = `
 > 08
 `
 
-// func (tsr *TraceSplitReader) Next(dir trace.Dir) (*trace.Msg, error) {
-// 	switch dir {
-// 	case trace.DirIn:
-// 		if len(tsr.inMsg) > 0 {
-// 			var m *trace.Msg
-// 			m, tsr.inMsg = tsr.inMsg[0], tsr.inMsg[1:]
-// 			return m, nil
-// 		}
-// 		for {
-// 			var m trace.Msg
-// 			err := tsr.r.ReadMsg(&m)
-// 			if err != nil {
-// 				return nil, err
-// 			}
-// 			if m.Dir == trace.DirIn {
-// 				return &m, nil
-// 			} else {
-// 				tsr.outMsg = append(tsr.outMsg, &m)
-// 			}
-// 		}
-// 	case trace.DirOut:
-// 		if len(tsr.outMsg) > 0 {
-// 			var m *trace.Msg
-// 			m, tsr.outMsg = tsr.outMsg[0], tsr.outMsg[1:]
-// 			return m, nil
-// 		}
-
-// 		for {
-// 			var m trace.Msg
-// 			err := tsr.r.ReadMsg(&m)
-// 			if err != nil {
-// 				return nil, err
-// 			}
-// 			if m.Dir == trace.DirOut {
-// 				return &m, nil
-// 			} else {
-// 				tsr.inMsg = append(tsr.inMsg, &m)
-// 			}
-// 		}
-// 	}
-// 	return nil, errors.New("bad dir")
-// }
-func TestTraceR(t *testing.T) {
+func TestTraceRead(t *testing.T) {
 	r := trace.NewReader(strings.NewReader(testReports))
 	for {
 		var msg trace.Msg
@@ -196,24 +154,61 @@ func TestTraceR(t *testing.T) {
 	}
 }
 
-func TestTraceSplit(t *testing.T) {
+func TestTraceQueue(t *testing.T) {
 	r := trace.NewReader(strings.NewReader(testReports))
-	tr := &TraceSplitReader{r: r}
-	dir := trace.DirIn
-	for i := 0; i < 20; i++ {
-		d, err := tr.NextDir()
-		t.Logf("i:%02d nextdir:%v err: %v", i, d, err)
+	var q1 trace.Queue
+	var q2 trace.Queue
+	var q3 trace.Queue
+	var q4 trace.Queue
+	for {
+		var msg trace.Msg
+		err := r.ReadMsg(&msg)
+		if err == io.EOF {
+			break
+		}
 
-		msg, err := tr.Next(d)
-		t.Logf("   dir:%v err: %v", dir, err)
-		if msg != nil {
-			t.Logf("  msg: %v [% 02x]", msg.Dir, msg.Data)
+		q1.Enqueue(&msg)
+		q2.Enqueue(&msg)
+		q3.Enqueue(&msg)
+		q4.Enqueue(&msg)
+	}
+
+	for {
+		m := q1.Dequeue()
+		if m == nil {
+			break
+		}
+		t.Logf("msg: %#v", m)
+	}
+	t.Logf("in first")
+	for {
+		m := q2.DequeueDir(trace.DirIn)
+		if m == nil {
+			break
+		}
+		t.Logf("msg: %#v", m)
+	}
+	t.Logf("out first")
+	for {
+		m := q3.DequeueDir(trace.DirOut)
+		if m == nil {
+			break
+		}
+		t.Logf("msg: %#v", m)
+	}
+
+	t.Logf("in,out,in,...")
+	dir := trace.DirIn
+	for {
+		m := q4.DequeueDir(dir)
+		if m == nil && q4.Head() == nil {
+			break
 		}
 		if dir == trace.DirIn {
 			dir = trace.DirOut
 		} else {
 			dir = trace.DirIn
 		}
-
+		t.Logf("msg: %#v", m)
 	}
 }
