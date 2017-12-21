@@ -53,6 +53,11 @@ type UsageError struct {
 	error
 }
 
+type ReadWriter struct {
+	io.Reader
+	io.Writer
+}
+
 func main() {
 	log.Formatter = &logrus.TextFormatter{
 		FullTimestamp:   true,
@@ -154,7 +159,7 @@ func main() {
 				le.Warningf("trace file opened")
 
 				tr := trace.NewReader(f)
-				trw := ReadWriter{NewTraceInputReader(tr), ioutil.Discard}
+				trw := ReadWriter{trace.NewTraceDirReader(tr, trace.DirIn), ioutil.Discard}
 				hidReportTransport := hid.NewCharDevReportTransport(trw)
 				frameTransport := hid.NewTransport(hidReportTransport, hid.DefaultReportDefs)
 				processFrames(frameTransport)

@@ -6,7 +6,6 @@ import (
 	"container/list"
 	"fmt"
 	"io"
-	//"github.com/oandrew/ipod/trace"
 )
 
 const (
@@ -162,6 +161,31 @@ func NewTracer(tw io.Writer, rw io.ReadWriter) io.ReadWriter {
 	return &tracer{
 		tw: NewWriter(tw),
 		rw: rw,
+	}
+}
+
+type traceDirReader struct {
+	r   *Reader
+	dir Dir
+}
+
+func NewTraceDirReader(r *Reader, dir Dir) io.Reader {
+	return &traceDirReader{
+		r:   r,
+		dir: dir,
+	}
+}
+
+func (tdr *traceDirReader) Read(p []byte) (n int, err error) {
+	for {
+		var m Msg
+		if err := tdr.r.ReadMsg(&m); err != nil {
+			return 0, err
+		}
+		if m.Dir != tdr.dir {
+			continue
+		}
+		return copy(p, m.Data), nil
 	}
 }
 
