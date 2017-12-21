@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/oandrew/ipod/trace"
@@ -124,4 +125,95 @@ func TestTracer(t *testing.T) {
 			t.Errorf("trace: %s != %s", tbuf.String(), "< 61 62")
 		}
 	})
+}
+
+var testReports = `
+< 01
+> 02
+< 03
+< 05
+< 07
+> 04
+< 09
+< 0A
+> 06
+< 0B
+< 0C
+> 08
+`
+
+// func (tsr *TraceSplitReader) Next(dir trace.Dir) (*trace.Msg, error) {
+// 	switch dir {
+// 	case trace.DirIn:
+// 		if len(tsr.inMsg) > 0 {
+// 			var m *trace.Msg
+// 			m, tsr.inMsg = tsr.inMsg[0], tsr.inMsg[1:]
+// 			return m, nil
+// 		}
+// 		for {
+// 			var m trace.Msg
+// 			err := tsr.r.ReadMsg(&m)
+// 			if err != nil {
+// 				return nil, err
+// 			}
+// 			if m.Dir == trace.DirIn {
+// 				return &m, nil
+// 			} else {
+// 				tsr.outMsg = append(tsr.outMsg, &m)
+// 			}
+// 		}
+// 	case trace.DirOut:
+// 		if len(tsr.outMsg) > 0 {
+// 			var m *trace.Msg
+// 			m, tsr.outMsg = tsr.outMsg[0], tsr.outMsg[1:]
+// 			return m, nil
+// 		}
+
+// 		for {
+// 			var m trace.Msg
+// 			err := tsr.r.ReadMsg(&m)
+// 			if err != nil {
+// 				return nil, err
+// 			}
+// 			if m.Dir == trace.DirOut {
+// 				return &m, nil
+// 			} else {
+// 				tsr.inMsg = append(tsr.inMsg, &m)
+// 			}
+// 		}
+// 	}
+// 	return nil, errors.New("bad dir")
+// }
+func TestTraceR(t *testing.T) {
+	r := trace.NewReader(strings.NewReader(testReports))
+	for {
+		var msg trace.Msg
+		err := r.ReadMsg(&msg)
+		if err == io.EOF {
+			break
+		}
+		t.Logf("msg: %#v", msg)
+	}
+}
+
+func TestTraceSplit(t *testing.T) {
+	r := trace.NewReader(strings.NewReader(testReports))
+	tr := &TraceSplitReader{r: r}
+	dir := trace.DirIn
+	for i := 0; i < 20; i++ {
+		d, err := tr.NextDir()
+		t.Logf("i:%02d nextdir:%v err: %v", i, d, err)
+
+		msg, err := tr.Next(d)
+		t.Logf("   dir:%v err: %v", dir, err)
+		if msg != nil {
+			t.Logf("  msg: %v [% 02x]", msg.Dir, msg.Data)
+		}
+		if dir == trace.DirIn {
+			dir = trace.DirOut
+		} else {
+			dir = trace.DirIn
+		}
+
+	}
 }

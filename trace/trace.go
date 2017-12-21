@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	//"github.com/oandrew/ipod/trace"
 )
 
 const (
@@ -43,6 +44,7 @@ func (d *Dir) UnmarshalText(text []byte) error {
 
 type Msg struct {
 	Dir  Dir
+	TS   uint
 	Data []byte
 }
 
@@ -73,7 +75,7 @@ func (m *Msg) UnmarshalText(text []byte) error {
 	if err != nil {
 		return fmt.Errorf("trace unmarshal: bad data")
 	}
-	m.Data = data
+	m.Data = data[:]
 	return nil
 
 }
@@ -81,6 +83,7 @@ func (m *Msg) UnmarshalText(text []byte) error {
 type Reader struct {
 	s   *bufio.Scanner
 	err error
+	ts  uint
 }
 
 func NewReader(r io.Reader) *Reader {
@@ -99,6 +102,10 @@ func (r *Reader) ReadMsg(m *Msg) error {
 			continue
 		}
 		err := m.UnmarshalText(text)
+		if err == nil {
+			m.TS = r.ts
+			r.ts++
+		}
 		return err
 	}
 	r.err = r.s.Err()
@@ -155,4 +162,96 @@ func NewTracer(tw io.Writer, rw io.ReadWriter) io.ReadWriter {
 		tw: NewWriter(tw),
 		rw: rw,
 	}
+}
+
+type TraceSplitReader struct {
+	r             *Reader
+	inMsg, outMsg []*Msg
+}
+
+func NewTraceSplitReader(r *Reader) *TraceSplitReader {
+	return &TraceSplitReader{
+		r: r,
+	}
+}
+
+func (tsr *TraceSplitReader) queue(dir Dir) *[]*Msg {
+	switch dir {
+	case DirIn:
+		return &tsr.inMsg
+	case DirOut:
+		return &tsr.outMsg
+	}
+	return nil
+}
+
+func (tsr *TraceSplitReader) NextDir() (Dir, error) {
+	switch {
+	case len(tsr.inMsg) > 0 && len(tsr.outMsg) > 0:
+		if tsr.inMsg[0].TS < tsr.outMsg[0].TS {
+			return DirIn, nil
+		} else {
+			return DirOut, nil
+		}
+	case len(tsr.inMsg) > 0:
+		return DirIn, nil
+	case len(tsr.outMsg) > 0:
+		return DirOut, nil
+	default:
+		var m Msg
+		err := tsr.r.ReadMsg(&m)
+		if err != nil {
+			return Dir(0xff), err
+		}
+
+		sq := tsr.queue(m.Dir)
+		*sq = append(*sq, &m)
+		return m.Dir, nil
+
+	}
+}
+
+func (tsr *TraceSplitReader) Next(dir Dir) (*Msg, error) {
+	q := tsr.queue(dir)
+	if q == nil {
+		return nil, io.EOF
+	}
+	if len(*q) > 0 {
+		var m *Msg
+		m, *q = (*q)[0], (*q)[1:]
+		return m, nil
+	}
+	for {
+		var m Msg
+		err := tsr.r.ReadMsg(&m)
+		if err != nil {
+			return nil, err
+		}
+		if m.Dir == dir {
+			return &m, nil
+		} else {
+			sq := tsr.queue(m.Dir)
+			*sq = append(*sq, &m)
+		}
+	}
+}
+
+type traceDirReader struct {
+	sr  *TraceSplitReader
+	dir Dir
+}
+
+func NewTraceDirReader(sr *TraceSplitReader, dir Dir) io.Reader {
+	return &traceDirReader{
+		sr:  sr,
+		dir: dir,
+	}
+}
+
+func (tdr *traceDirReader) Read(p []byte) (n int, err error) {
+	msg, err := tdr.sr.Next(tdr.dir)
+	if err != nil {
+		return 0, err
+	}
+	return copy(p, msg.Data), nil
 }
