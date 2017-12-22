@@ -57,7 +57,7 @@ func HandleDispRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceDispRe
 		// RetIndexedPlayingTrackInfo:
 		ipod.Respond(req, tr, &RetIndexedPlayingTrackInfo{
 			InfoType: msg.InfoType,
-			InfoData: []byte{0x00}, //no data
+			InfoData: 0x00, //todo
 		})
 	case *GetNumPlayingTracks:
 		ipod.Respond(req, tr, &RetNumPlayingTracks{

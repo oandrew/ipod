@@ -118,7 +118,7 @@ type GetIndexedPlayingTrackInfo struct {
 }
 type RetIndexedPlayingTrackInfo struct {
 	InfoType byte
-	InfoData []byte
+	InfoData byte
 }
 type GetNumPlayingTracks struct {
 }
