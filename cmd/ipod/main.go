@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"time"
 
 	"os"
 
@@ -59,10 +58,7 @@ type ReadWriter struct {
 }
 
 func main() {
-	log.Formatter = &logrus.TextFormatter{
-		FullTimestamp:   true,
-		TimestampFormat: time.StampMilli,
-	}
+	log.Formatter = &TextFormatter{}
 
 	app := cli.NewApp()
 	app.Name = "ipod"
