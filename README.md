@@ -1,6 +1,7 @@
 # ipod
 [![Join the chat at https://gitter.im/ipod-gadget/Lobby](https://badges.gitter.im/ipod-gadget/Lobby.svg)](https://gitter.im/ipod-gadget/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![GoDoc](https://godoc.org/github.com/oandrew/ipod?status.svg)](https://godoc.org/github.com/oandrew/ipod)
+[![Build Status](https://travis-ci.org/oandrew/ipod.svg?branch=master)](https://travis-ci.org/oandrew/ipod)
 
 ipod is a golang userspace library implementation of the ipod accessory protocol.
 It includes an example client for use with https://github.com/oandrew/ipod-gadget
@@ -22,14 +23,17 @@ go build github.com/oandrew/ipod/cmd/ipod
 # or cross compiling
 GOOS=linux GOARCH=arm GOARM=6 go build github.com/oandrew/ipod/cmd/ipod
 
-# with verbose logging
-./ipod -v -d /dev/iap0
+# with debug logging
+./ipod -d serve /dev/iap0
 
 # save a trace file
-./ipod -v -w ipod.trace -d /dev/iap0
+./ipod -d serve -w ipod.trace /dev/iap0
 
-# replay a trace file
-./ipod -v -r ipod.trace
+# simulate incoming requests from a trace file
+./ipod -d replay ./ipod.trace
+
+# view a trace file
+./ipod -d view ./ipod.trace
 
 ```
 
