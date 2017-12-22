@@ -173,7 +173,7 @@ func (s ReturnIndexedPlayingTrackInfo) MarshalBinary() ([]byte, error) {
 	return w.Bytes(), nil
 }
 
-func (s ReturnIndexedPlayingTrackInfo) UnmarshalBinary(data []byte) error {
+func (s *ReturnIndexedPlayingTrackInfo) UnmarshalBinary(data []byte) error {
 	r := bytes.NewReader(data)
 	if err := binary.Read(r, binary.BigEndian, &s.InfoType); err != nil {
 		return err
@@ -214,7 +214,7 @@ func (s RetArtworkFormats) MarshalBinary() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (s RetArtworkFormats) UnmarshalBinary(data []byte) error {
+func (s *RetArtworkFormats) UnmarshalBinary(data []byte) error {
 	r := bytes.NewReader(data)
 
 	for {
@@ -321,7 +321,7 @@ func (s ReturnIndexedPlayingTrackTitle) MarshalBinary() ([]byte, error) {
 	return s.Title, nil
 }
 
-func (s ReturnIndexedPlayingTrackTitle) UnmarshalBinary(data []byte) error {
+func (s *ReturnIndexedPlayingTrackTitle) UnmarshalBinary(data []byte) error {
 	s.Title = make([]byte, len(data))
 	copy(s.Title, data)
 	return nil
@@ -338,7 +338,7 @@ func (s ReturnIndexedPlayingTrackArtistName) MarshalBinary() ([]byte, error) {
 	return s.ArtistName, nil
 }
 
-func (s ReturnIndexedPlayingTrackArtistName) UnmarshalBinary(data []byte) error {
+func (s *ReturnIndexedPlayingTrackArtistName) UnmarshalBinary(data []byte) error {
 	s.ArtistName = make([]byte, len(data))
 	copy(s.ArtistName, data)
 	return nil
@@ -355,7 +355,7 @@ func (s ReturnIndexedPlayingTrackAlbumName) MarshalBinary() ([]byte, error) {
 	return s.AlbumName, nil
 }
 
-func (s ReturnIndexedPlayingTrackAlbumName) UnmarshalBinary(data []byte) error {
+func (s *ReturnIndexedPlayingTrackAlbumName) UnmarshalBinary(data []byte) error {
 	s.AlbumName = make([]byte, len(data))
 	copy(s.AlbumName, data)
 	return nil

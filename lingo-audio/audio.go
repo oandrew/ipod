@@ -45,6 +45,7 @@ type RetAccSampleRateCaps struct {
 
 func (s *RetAccSampleRateCaps) UnmarshalBinary(data []byte) error {
 	r := bytes.NewReader(data)
+
 	for {
 		var rate uint32
 		if err := binary.Read(r, binary.BigEndian, &rate); err != nil {
