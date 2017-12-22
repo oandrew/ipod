@@ -59,7 +59,7 @@ func (tr *Transaction) Delta(d int) *Transaction {
 }
 
 func (cmd *Command) MarshalBinary() ([]byte, error) {
-	pktBuf := bytes.NewBuffer(make([]byte, 0, 1024))
+	pktBuf := &bytes.Buffer{}
 
 	if err := marshalLingoCmdID(pktBuf, cmd.ID); err != nil {
 		return nil, fmt.Errorf("ipod.Command marshal: %v", err)
