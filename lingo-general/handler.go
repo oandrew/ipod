@@ -240,7 +240,7 @@ func HandleGeneral(req *ipod.Command, tr ipod.CommandWriter, dev DeviceGeneral) 
 	case *GetNowPlayingFocusApp:
 		ipod.Respond(req, tr, &RetNowPlayingFocusApp{AppID: ipod.StringToBytes("")})
 
-	case *ipod.UnknownPayload:
+	case ipod.UnknownPayload:
 		ipod.Respond(req, tr, ack(req, ACKStatusUnkownID))
 	default:
 		_ = msg
