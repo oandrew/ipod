@@ -8,8 +8,8 @@ type DeviceExtRemote interface {
 	PlaybackStatus() (trackLength, trackPos uint32, state PlayerState)
 }
 
-func ackSuccess(req *ipod.Command) ACK {
-	return ACK{Status: ACKStatusSuccess, CmdID: req.ID.CmdID()}
+func ackSuccess(req *ipod.Command) *ACK {
+	return &ACK{Status: ACKStatusSuccess, CmdID: req.ID.CmdID()}
 }
 
 // func ackPending(req ipod.Packet, maxWait uint32) ACKPending {
@@ -20,29 +20,29 @@ func HandleExtRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceExtRemo
 	//log.Printf("Req: %#v", req)
 	switch msg := req.Payload.(type) {
 
-	case GetCurrentPlayingTrackChapterInfo:
-		ipod.Respond(req, tr, ReturnCurrentPlayingTrackChapterInfo{
+	case *GetCurrentPlayingTrackChapterInfo:
+		ipod.Respond(req, tr, &ReturnCurrentPlayingTrackChapterInfo{
 			CurrentChapterIndex: -1,
 			ChapterCount:        0,
 		})
-	case SetCurrentPlayingTrackChapter:
+	case *SetCurrentPlayingTrackChapter:
 		ipod.Respond(req, tr, ackSuccess(req))
-	case GetCurrentPlayingTrackChapterPlayStatus:
-		ipod.Respond(req, tr, ReturnCurrentPlayingTrackChapterPlayStatus{
+	case *GetCurrentPlayingTrackChapterPlayStatus:
+		ipod.Respond(req, tr, &ReturnCurrentPlayingTrackChapterPlayStatus{
 			ChapterPosition: 0,
 			ChapterLength:   0,
 		})
-	case GetCurrentPlayingTrackChapterName:
-		ipod.Respond(req, tr, ReturnCurrentPlayingTrackChapterName{
+	case *GetCurrentPlayingTrackChapterName:
+		ipod.Respond(req, tr, &ReturnCurrentPlayingTrackChapterName{
 			ChapterName: ipod.StringToBytes("chapter"),
 		})
-	case GetAudiobookSpeed:
-		ipod.Respond(req, tr, ReturnAudiobookSpeed{
+	case *GetAudiobookSpeed:
+		ipod.Respond(req, tr, &ReturnAudiobookSpeed{
 			Speed: 0,
 		})
-	case SetAudiobookSpeed:
+	case *SetAudiobookSpeed:
 		ipod.Respond(req, tr, ackSuccess(req))
-	case GetIndexedPlayingTrackInfo:
+	case *GetIndexedPlayingTrackInfo:
 		var info interface{}
 		switch msg.InfoType {
 		case TrackInfoCaps:
@@ -63,98 +63,98 @@ func HandleExtRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceExtRemo
 			info = []byte{0x00}
 
 		}
-		ipod.Respond(req, tr, ReturnIndexedPlayingTrackInfo{
+		ipod.Respond(req, tr, &ReturnIndexedPlayingTrackInfo{
 			InfoType: msg.InfoType,
 			Info:     info,
 		})
-	case GetArtworkFormats:
-		ipod.Respond(req, tr, RetArtworkFormats{})
-	case GetTrackArtworkData:
-		ipod.Respond(req, tr, ACK{
+	case *GetArtworkFormats:
+		ipod.Respond(req, tr, &RetArtworkFormats{})
+	case *GetTrackArtworkData:
+		ipod.Respond(req, tr, &ACK{
 			Status: ACKStatusFailed,
 			CmdID:  req.ID.CmdID(),
 		})
-	case ResetDBSelection:
+	case *ResetDBSelection:
 		ipod.Respond(req, tr, ackSuccess(req))
-	case SelectDBRecord:
+	case *SelectDBRecord:
 		ipod.Respond(req, tr, ackSuccess(req))
-	case GetNumberCategorizedDBRecords:
-		ipod.Respond(req, tr, ReturnNumberCategorizedDBRecords{
+	case *GetNumberCategorizedDBRecords:
+		ipod.Respond(req, tr, &ReturnNumberCategorizedDBRecords{
 			RecordCount: 0,
 		})
-	case RetrieveCategorizedDatabaseRecords:
-		ipod.Respond(req, tr, ReturnCategorizedDatabaseRecord{})
-	case GetPlayStatus:
-		ipod.Respond(req, tr, ReturnPlayStatus{
+	case *RetrieveCategorizedDatabaseRecords:
+		ipod.Respond(req, tr, &ReturnCategorizedDatabaseRecord{})
+	case *GetPlayStatus:
+		ipod.Respond(req, tr, &ReturnPlayStatus{
 			TrackLength:   300 * 1000,
 			TrackPosition: 20 * 1000,
 			State:         PlayerStatePaused,
 		})
-	case GetCurrentPlayingTrackIndex:
-		ipod.Respond(req, tr, ReturnCurrentPlayingTrackIndex{
+	case *GetCurrentPlayingTrackIndex:
+		ipod.Respond(req, tr, &ReturnCurrentPlayingTrackIndex{
 			TrackIndex: 0,
 		})
-	case GetIndexedPlayingTrackTitle:
-		ipod.Respond(req, tr, ReturnIndexedPlayingTrackTitle{
+	case *GetIndexedPlayingTrackTitle:
+		ipod.Respond(req, tr, &ReturnIndexedPlayingTrackTitle{
 			Title: ipod.StringToBytes("title"),
 		})
-	case GetIndexedPlayingTrackArtistName:
-		ipod.Respond(req, tr, ReturnIndexedPlayingTrackArtistName{
+	case *GetIndexedPlayingTrackArtistName:
+		ipod.Respond(req, tr, &ReturnIndexedPlayingTrackArtistName{
 			ArtistName: ipod.StringToBytes("artist"),
 		})
-	case GetIndexedPlayingTrackAlbumName:
-		ipod.Respond(req, tr, ReturnIndexedPlayingTrackAlbumName{
+	case *GetIndexedPlayingTrackAlbumName:
+		ipod.Respond(req, tr, &ReturnIndexedPlayingTrackAlbumName{
 			AlbumName: ipod.StringToBytes("album"),
 		})
-	case SetPlayStatusChangeNotification:
+	case *SetPlayStatusChangeNotification:
 		ipod.Respond(req, tr, ackSuccess(req))
-	//case PlayStatusChangeNotification:
-	case PlayCurrentSelection:
+	//case *PlayStatusChangeNotification:
+	case *PlayCurrentSelection:
 		ipod.Respond(req, tr, ackSuccess(req))
-	case PlayControl:
+	case *PlayControl:
 		ipod.Respond(req, tr, ackSuccess(req))
-	case GetTrackArtworkTimes:
-		ipod.Respond(req, tr, RetTrackArtworkTimes{})
-	case GetShuffle:
-		ipod.Respond(req, tr, ReturnShuffle{Mode: ShuffleOff})
-	case SetShuffle:
-		ipod.Respond(req, tr, ackSuccess(req))
-
-	case GetRepeat:
-		ipod.Respond(req, tr, ReturnRepeat{Mode: RepeatOff})
-	case SetRepeat:
+	case *GetTrackArtworkTimes:
+		ipod.Respond(req, tr, &RetTrackArtworkTimes{})
+	case *GetShuffle:
+		ipod.Respond(req, tr, &ReturnShuffle{Mode: ShuffleOff})
+	case *SetShuffle:
 		ipod.Respond(req, tr, ackSuccess(req))
 
-	case SetDisplayImage:
+	case *GetRepeat:
+		ipod.Respond(req, tr, &ReturnRepeat{Mode: RepeatOff})
+	case *SetRepeat:
 		ipod.Respond(req, tr, ackSuccess(req))
-	case GetMonoDisplayImageLimits:
-		ipod.Respond(req, tr, ReturnMonoDisplayImageLimits{
+
+	case *SetDisplayImage:
+		ipod.Respond(req, tr, ackSuccess(req))
+	case *GetMonoDisplayImageLimits:
+		ipod.Respond(req, tr, &ReturnMonoDisplayImageLimits{
 			MaxWidth:    640,
 			MaxHeight:   960,
 			PixelFormat: 0x01,
 		})
-	case GetNumPlayingTracks:
-		ipod.Respond(req, tr, ReturnNumPlayingTracks{
+	case *GetNumPlayingTracks:
+		ipod.Respond(req, tr, &ReturnNumPlayingTracks{
 			NumTracks: 0,
 		})
-	case SetCurrentPlayingTrack:
-	case SelectSortDBRecord:
-	case GetColorDisplayImageLimits:
-		ipod.Respond(req, tr, ReturnColorDisplayImageLimits{
+	case *SetCurrentPlayingTrack:
+	case *SelectSortDBRecord:
+	case *GetColorDisplayImageLimits:
+		ipod.Respond(req, tr, &ReturnColorDisplayImageLimits{
 			MaxWidth:    640,
 			MaxHeight:   960,
 			PixelFormat: 0x01,
 		})
-	case ResetDBSelectionHierarchy:
+	case *ResetDBSelectionHierarchy:
 		//noop
 
-	case GetDBiTunesInfo:
+	case *GetDBiTunesInfo:
 	// RetDBiTunesInfo:
-	case GetUIDTrackInfo:
+	case *GetUIDTrackInfo:
 	// RetUIDTrackInfo:
-	case GetDBTrackInfo:
+	case *GetDBTrackInfo:
 	// RetDBTrackInfo:
-	case GetPBTrackInfo:
+	case *GetPBTrackInfo:
 	// RetPBTrackInfo:
 
 	default:

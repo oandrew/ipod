@@ -294,7 +294,7 @@ func handlePacket(cmdWriter ipod.CommandWriter, cmd *ipod.Command) {
 	switch cmd.ID.LingoID() {
 	case general.LingoGeneralID:
 		general.HandleGeneral(cmd, cmdWriter, devGeneral)
-		if _, ok := cmd.Payload.(general.RetDevAuthenticationSignature); ok {
+		if _, ok := cmd.Payload.(*general.RetDevAuthenticationSignature); ok {
 			audio.Start(cmdWriter)
 		}
 	case simpleremote.LingoSimpleRemotelID:

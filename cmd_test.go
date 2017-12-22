@@ -24,7 +24,7 @@ func (p *CustomPayload) UnmarshalBinary(data []byte) error {
 	return binary.Read(bytes.NewReader(data), binary.BigEndian, &p.V)
 }
 
-func (p CustomPayload) MarshalBinary() ([]byte, error) {
+func (p *CustomPayload) MarshalBinary() ([]byte, error) {
 	buf := bytes.Buffer{}
 	err := binary.Write(&buf, binary.BigEndian, p.V)
 	return buf.Bytes(), err
@@ -39,7 +39,7 @@ func TestCommand_MarshalBinary(t *testing.T) {
 	}{
 		{"no-tr-no-payload", ipod.Command{ipod.NewLingoCmdID(0x01, 0x01), nil, nil}, nil, true},
 		{"no-tr-with-simple-payload", ipod.Command{ipod.NewLingoCmdID(0x01, 0x02), nil, uint32(0x03)}, []byte{0x01, 0x02, 0x00, 0x00, 0x00, 0x03}, false},
-		{"no-tr-with-custom-payload", ipod.Command{ipod.NewLingoCmdID(0x01, 0x02), nil, CustomPayload{0x03}}, []byte{0x01, 0x02, 0x00, 0x00, 0x00, 0x03}, false},
+		{"no-tr-with-custom-payload", ipod.Command{ipod.NewLingoCmdID(0x01, 0x02), nil, &CustomPayload{0x03}}, []byte{0x01, 0x02, 0x00, 0x00, 0x00, 0x03}, false},
 		{"with-tr-with-simple-payload", ipod.Command{ipod.NewLingoCmdID(0x01, 0x02), ipod.NewTransaction(0x01), uint32(0x03)}, []byte{0x01, 0x02, 0x00, 0x01, 0x00, 0x00, 0x00, 0x03}, false},
 	}
 	for _, tt := range tests {
@@ -67,8 +67,8 @@ func TestCommand_UnmarshalBinary(t *testing.T) {
 	}{
 		{"no-tr-unknown-payload", []byte{0xee, 0x01}, ipod.Command{ipod.NewLingoCmdID(0xee, 0x01), nil, ipod.UnknownPayload{}}, true},
 		{"with-tr-unknown-payload", []byte{0xee, 0x01, 0x00, 0x03}, ipod.Command{ipod.NewLingoCmdID(0xee, 0x01), nil, ipod.UnknownPayload{0x00, 0x03}}, true},
-		{"no-tr-known-payload", []byte{0xaa, 0x01, 0x00, 0x00, 0x00, 0x03}, ipod.Command{ipod.NewLingoCmdID(0xaa, 0x01), nil, CustomPayload{V: 0x03}}, false},
-		{"with-tr-known-payload", []byte{0xaa, 0x01, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03}, ipod.Command{ipod.NewLingoCmdID(0xaa, 0x01), ipod.NewTransaction(0x02), CustomPayload{V: 0x03}}, false},
+		{"no-tr-known-payload", []byte{0xaa, 0x01, 0x00, 0x00, 0x00, 0x03}, ipod.Command{ipod.NewLingoCmdID(0xaa, 0x01), nil, &CustomPayload{V: 0x03}}, false},
+		{"with-tr-known-payload", []byte{0xaa, 0x01, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03}, ipod.Command{ipod.NewLingoCmdID(0xaa, 0x01), ipod.NewTransaction(0x02), &CustomPayload{V: 0x03}}, false},
 
 		{"no-tr-known-payload-short", []byte{0xaa, 0x01, 0x00, 0x00, 0x03}, ipod.Command{ipod.NewLingoCmdID(0xaa, 0x01), ipod.NewTransaction(0x00), nil}, true},
 		{"with-tr-known-payload-short", []byte{0xaa, 0x01, 0x00, 0x02, 0x00, 0x00, 0x03}, ipod.Command{ipod.NewLingoCmdID(0xaa, 0x01), ipod.NewTransaction(0x02), nil}, true},

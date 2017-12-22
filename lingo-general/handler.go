@@ -30,20 +30,20 @@ type DeviceGeneral interface {
 	MaxPayload() uint16
 }
 
-func ackSuccess(req *ipod.Command) ACK {
-	return ACK{Status: ACKStatusSuccess, CmdID: uint8(req.ID.CmdID())}
+func ackSuccess(req *ipod.Command) *ACK {
+	return &ACK{Status: ACKStatusSuccess, CmdID: uint8(req.ID.CmdID())}
 }
 
-func ackPending(req *ipod.Command, maxWait uint32) ACKPending {
-	return ACKPending{Status: ACKStatusPending, CmdID: uint8(req.ID.CmdID()), MaxWait: maxWait}
+func ackPending(req *ipod.Command, maxWait uint32) *ACKPending {
+	return &ACKPending{Status: ACKStatusPending, CmdID: uint8(req.ID.CmdID()), MaxWait: maxWait}
 }
 
-func ack(req *ipod.Command, status ACKStatus) ACK {
-	return ACK{Status: status, CmdID: uint8(req.ID.CmdID())}
+func ack(req *ipod.Command, status ACKStatus) *ACK {
+	return &ACK{Status: status, CmdID: uint8(req.ID.CmdID())}
 }
 
-func ackFIDTokens(tokens SetFIDTokenValues) RetFIDTokenValueACKs {
-	resp := RetFIDTokenValueACKs{NumFIDTokenValueACKs: tokens.NumFIDTokenValues}
+func ackFIDTokens(tokens *SetFIDTokenValues) *RetFIDTokenValueACKs {
+	resp := &RetFIDTokenValueACKs{NumFIDTokenValueACKs: tokens.NumFIDTokenValues}
 	buf := bytes.Buffer{}
 	for _, token := range tokens.FIDTokenValues {
 
@@ -82,11 +82,11 @@ func ackFIDTokens(tokens SetFIDTokenValues) RetFIDTokenValueACKs {
 
 func HandleGeneral(req *ipod.Command, tr ipod.CommandWriter, dev DeviceGeneral) error {
 	switch msg := req.Payload.(type) {
-	case RequestRemoteUIMode:
-		ipod.Respond(req, tr, ReturnRemoteUIMode{
+	case *RequestRemoteUIMode:
+		ipod.Respond(req, tr, &ReturnRemoteUIMode{
 			Mode: ipod.BoolToByte(dev.UIMode() == UIModeExtended),
 		})
-	case EnterRemoteUIMode:
+	case *EnterRemoteUIMode:
 		if dev.UIMode() == UIModeExtended {
 			ipod.Respond(req, tr, ackSuccess(req))
 		} else {
@@ -94,7 +94,7 @@ func HandleGeneral(req *ipod.Command, tr ipod.CommandWriter, dev DeviceGeneral) 
 			dev.SetUIMode(UIModeExtended)
 			ipod.Respond(req, tr, ackSuccess(req))
 		}
-	case ExitRemoteUIMode:
+	case *ExitRemoteUIMode:
 		if dev.UIMode() != UIModeExtended {
 			ipod.Respond(req, tr, ackSuccess(req))
 		} else {
@@ -102,145 +102,145 @@ func HandleGeneral(req *ipod.Command, tr ipod.CommandWriter, dev DeviceGeneral) 
 			dev.SetUIMode(UIModeStandart)
 			ipod.Respond(req, tr, ackSuccess(req))
 		}
-	case RequestiPodName:
-		ipod.Respond(req, tr, ReturniPodName{Name: ipod.StringToBytes(dev.Name())})
-	case RequestiPodSoftwareVersion:
+	case *RequestiPodName:
+		ipod.Respond(req, tr, &ReturniPodName{Name: ipod.StringToBytes(dev.Name())})
+	case *RequestiPodSoftwareVersion:
 		var resp ReturniPodSoftwareVersion
 		resp.Major, resp.Minor, resp.Rev = dev.SoftwareVersion()
-		ipod.Respond(req, tr, resp)
-	case RequestiPodSerialNum:
-		ipod.Respond(req, tr, ReturniPodSerialNum{Serial: ipod.StringToBytes(dev.SerialNum())})
-	case RequestLingoProtocolVersion:
+		ipod.Respond(req, tr, &resp)
+	case *RequestiPodSerialNum:
+		ipod.Respond(req, tr, &ReturniPodSerialNum{Serial: ipod.StringToBytes(dev.SerialNum())})
+	case *RequestLingoProtocolVersion:
 		var resp ReturnLingoProtocolVersion
 		resp.Lingo = msg.Lingo
 		resp.Major, resp.Minor = dev.LingoProtocolVersion(msg.Lingo)
-		ipod.Respond(req, tr, resp)
-	case RequestTransportMaxPayloadSize:
-		ipod.Respond(req, tr, ReturnTransportMaxPayloadSize{MaxPayload: dev.MaxPayload()})
-	case IdentifyDeviceLingoes:
+		ipod.Respond(req, tr, &resp)
+	case *RequestTransportMaxPayloadSize:
+		ipod.Respond(req, tr, &ReturnTransportMaxPayloadSize{MaxPayload: dev.MaxPayload()})
+	case *IdentifyDeviceLingoes:
 		ipod.Respond(req, tr, ackSuccess(req))
 
 	//GetDevAuthenticationInfo
-	case RetDevAuthenticationInfo:
+	case *RetDevAuthenticationInfo:
 		if msg.Major >= 2 {
 			if msg.CertCurrentSection < msg.CertMaxSection {
 				ipod.Respond(req, tr, ackSuccess(req))
 			} else {
-				ipod.Respond(req, tr, AckDevAuthenticationInfo{Status: DevAuthInfoStatusSupported})
+				ipod.Respond(req, tr, &AckDevAuthenticationInfo{Status: DevAuthInfoStatusSupported})
 
-				ipod.Respond(req, tr, GetDevAuthenticationSignatureV2{Counter: 0})
+				ipod.Respond(req, tr, &GetDevAuthenticationSignatureV2{Counter: 0})
 			}
 		} else {
-			ipod.Respond(req, tr, AckDevAuthenticationInfo{Status: DevAuthInfoStatusSupported})
+			ipod.Respond(req, tr, &AckDevAuthenticationInfo{Status: DevAuthInfoStatusSupported})
 		}
 
 	// GetDevAuthenticationSignatureV1
-	// case RetDevAuthenticationSignatureV1:
-	// 	ipod.Respond(req, tr, AckDevAuthenticationStatus{Status: DevAuthStatusPassed})
+	// case *RetDevAuthenticationSignatureV1:
+	// 	ipod.Respond(req, tr, ackDevAuthenticationStatus{Status: DevAuthStatusPassed})
 	// // GetDevAuthenticationSignatureV2
-	// case RetDevAuthenticationSignatureV2:
-	// 	ipod.Respond(req, tr, AckDevAuthenticationStatus{Status: DevAuthStatusPassed})
+	// case *RetDevAuthenticationSignatureV2:
+	// 	ipod.Respond(req, tr, ackDevAuthenticationStatus{Status: DevAuthStatusPassed})
 
-	case RetDevAuthenticationSignature:
-		ipod.Respond(req, tr, AckDevAuthenticationStatus{Status: DevAuthStatusPassed})
+	case *RetDevAuthenticationSignature:
+		ipod.Respond(req, tr, &AckDevAuthenticationStatus{Status: DevAuthStatusPassed})
 
-	case GetiPodAuthenticationInfo:
-		ipod.Respond(req, tr, RetiPodAuthenticationInfo{
+	case *GetiPodAuthenticationInfo:
+		ipod.Respond(req, tr, &RetiPodAuthenticationInfo{
 			Major: 1, Minor: 1,
 			CertCurrentSection: 0, CertMaxSection: 0, CertData: []byte{},
 		})
 
-	case AckiPodAuthenticationInfo:
+	case *AckiPodAuthenticationInfo:
 		// pass
 
-	case GetiPodAuthenticationSignature:
-		ipod.Respond(req, tr, RetiPodAuthenticationSignature{Signature: msg.Challenge})
+	case *GetiPodAuthenticationSignature:
+		ipod.Respond(req, tr, &RetiPodAuthenticationSignature{Signature: msg.Challenge})
 
-	case AckiPodAuthenticationStatus:
+	case *AckiPodAuthenticationStatus:
 		// pass
 
 	// revisit
-	case GetiPodOptions:
-		ipod.Respond(req, tr, RetiPodOptions{Options: 0x00})
+	case *GetiPodOptions:
+		ipod.Respond(req, tr, &RetiPodOptions{Options: 0x00})
 
 	// GetAccessoryInfo
 	// check back might be useful
-	case RetAccessoryInfo:
+	case *RetAccessoryInfo:
 		// pass
 
-	case GetiPodPreferences:
-		ipod.Respond(req, tr, RetiPodPreferences{
+	case *GetiPodPreferences:
+		ipod.Respond(req, tr, &RetiPodPreferences{
 			PrefClassID:        msg.PrefClassID,
 			PrefClassSettingID: dev.PrefSettingID(msg.PrefClassID),
 		})
 
-	case SetiPodPreferences:
+	case *SetiPodPreferences:
 		dev.SetPrefSettingID(msg.PrefClassID, msg.PrefClassSettingID, ipod.ByteToBool(msg.RestoreOnExit))
 		ipod.Respond(req, tr, ackSuccess(req))
 
-	case GetUIMode:
-		ipod.Respond(req, tr, RetUIMode{UIMode: dev.UIMode()})
-	case SetUIMode:
+	case *GetUIMode:
+		ipod.Respond(req, tr, &RetUIMode{UIMode: dev.UIMode()})
+	case *SetUIMode:
 		ipod.Respond(req, tr, ackSuccess(req))
 
-	case StartIDPS:
+	case *StartIDPS:
 		dev.StartIDPS()
 		ipod.Respond(req, tr, ackSuccess(req))
-	case SetFIDTokenValues:
+	case *SetFIDTokenValues:
 		ipod.Respond(req, tr, ackFIDTokens(msg))
-	case EndIDPS:
+	case *EndIDPS:
 		switch msg.AccEndIDPSStatus {
 		case AccEndIDPSStatusContinue:
-			ipod.Respond(req, tr, IDPSStatus{Status: IDPSStatusOK})
-			ipod.Send(tr, GetDevAuthenticationInfo{}, req.Transaction.Delta(1))
+			ipod.Respond(req, tr, &IDPSStatus{Status: IDPSStatusOK})
+			ipod.Send(tr, &GetDevAuthenticationInfo{}, req.Transaction.Delta(1))
 
 			// get dev auth info
 		case AccEndIDPSStatusReset:
-			ipod.Respond(req, tr, IDPSStatus{Status: IDPSStatusTimeLimitNotExceeded})
+			ipod.Respond(req, tr, &IDPSStatus{Status: IDPSStatusTimeLimitNotExceeded})
 		case AccEndIDPSStatusAbandon:
-			ipod.Respond(req, tr, IDPSStatus{Status: IDPSStatusWillNotAccept})
+			ipod.Respond(req, tr, &IDPSStatus{Status: IDPSStatusWillNotAccept})
 		case AccEndIDPSStatusNewLink:
 			//pass
 		}
 
 	// SetAccStatusNotification, RetAccStatusNotification
-	case AccessoryStatusNotification:
+	case *AccessoryStatusNotification:
 
 	// iPodNotification later
-	case SetEventNotification:
+	case *SetEventNotification:
 		dev.SetEventNotificationMask(msg.EventMask)
 		ipod.Respond(req, tr, ackSuccess(req))
 
-	case GetiPodOptionsForLingo:
-		ipod.Respond(req, tr, RetiPodOptionsForLingo{
+	case *GetiPodOptionsForLingo:
+		ipod.Respond(req, tr, &RetiPodOptionsForLingo{
 			LingoID: msg.LingoID,
 			Options: dev.LingoOptions(msg.LingoID),
 		})
 
-	case GetEventNotification:
-		ipod.Respond(req, tr, RetEventNotification{
+	case *GetEventNotification:
+		ipod.Respond(req, tr, &RetEventNotification{
 			EventMask: dev.EventNotificationMask(),
 		})
 
-	case GetSupportedEventNotification:
-		ipod.Respond(req, tr, RetSupportedEventNotification{
+	case *GetSupportedEventNotification:
+		ipod.Respond(req, tr, &RetSupportedEventNotification{
 			EventMask: dev.SupportedEventNotificationMask(),
 		})
 
-	case CancelCommand:
+	case *CancelCommand:
 		dev.CancelCommand(msg.LingoID, msg.CmdID, msg.TransactionID)
 		ipod.Respond(req, tr, ackSuccess(req))
 
-	case SetAvailableCurrent:
+	case *SetAvailableCurrent:
 		// notify acc
 
-	case RequestApplicationLaunch:
+	case *RequestApplicationLaunch:
 		ipod.Respond(req, tr, ackSuccess(req))
 
-	case GetNowPlayingFocusApp:
-		ipod.Respond(req, tr, RetNowPlayingFocusApp{AppID: ipod.StringToBytes("")})
+	case *GetNowPlayingFocusApp:
+		ipod.Respond(req, tr, &RetNowPlayingFocusApp{AppID: ipod.StringToBytes("")})
 
-	case ipod.UnknownPayload:
+	case *ipod.UnknownPayload:
 		ipod.Respond(req, tr, ack(req, ACKStatusUnkownID))
 	default:
 		_ = msg

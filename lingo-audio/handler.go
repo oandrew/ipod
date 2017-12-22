@@ -16,16 +16,16 @@ type DeviceAudio interface {
 // }
 
 func Start(tr ipod.CommandWriter) {
-	p, _ := ipod.BuildCommand(GetAccSampleRateCaps{})
+	p, _ := ipod.BuildCommand(&GetAccSampleRateCaps{})
 	p.Transaction = ipod.NewTransaction(999)
 	tr.WriteCommand(p)
 }
 
 func HandleAudio(req *ipod.Command, tr ipod.CommandWriter, dev DeviceAudio) error {
 	switch msg := req.Payload.(type) {
-	case AccAck:
-	case RetAccSampleRateCaps:
-		ipod.Respond(req, tr, TrackNewAudioAttributes{
+	case *AccAck:
+	case *RetAccSampleRateCaps:
+		ipod.Respond(req, tr, &TrackNewAudioAttributes{
 			SampleRate: 44100,
 		})
 

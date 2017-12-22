@@ -6,7 +6,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"reflect"
+
+	"log"
 )
 
 // UnknownPayload is a payload  that represents an unknown command
@@ -121,7 +122,8 @@ func (cmd *Command) UnmarshalBinary(pkt []byte) error {
 			return fmt.Errorf("ipod.Command unmarshal: binary.Read: %v", err)
 		}
 	}
-	cmd.Payload = reflect.Indirect(reflect.ValueOf(lookup.Payload)).Interface()
+	//cmd.Payload = reflect.Indirect(reflect.ValueOf(lookup.Payload)).Interface()
+	cmd.Payload = lookup.Payload
 	return nil
 
 }
@@ -141,6 +143,7 @@ func BuildCommand(payload interface{}) (*Command, error) {
 func Respond(req *Command, pw CommandWriter, payload interface{}) {
 	cmd, err := BuildCommand(payload)
 	if err != nil {
+		log.Printf("BuildCommand err: %v", err)
 		return
 	}
 	cmd.Transaction = req.Transaction.Copy()

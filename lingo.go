@@ -140,13 +140,17 @@ func DumpLingos() string {
 // LookupID finds a registered LingoCmdID by the type of v
 // i.e. reverse to Lookup
 func LookupID(v interface{}) (id LingoCmdID, ok bool) {
-	id, ok = mTypeToID[reflect.TypeOf(v)]
+	t := reflect.TypeOf(v)
+	if t.Kind() != reflect.Ptr {
+		panic(fmt.Sprintf("payload is not pointer: %v", v))
+	}
+	id, ok = mTypeToID[t.Elem()]
 	return
 }
 
-// LookupResult contains the result of Lookup.
-// Payload is an instance of the corresponding payload type.
-// Transaction specifies if the Transaction should be presend in the packet.
+// LookupResult contains the result of a Lookup.
+// Payload is a pointer to a new zero value of the found type
+// Transaction specifies if the Transaction should be present in the packet.
 type LookupResult struct {
 	Payload     interface{}
 	Transaction bool
