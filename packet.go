@@ -2,7 +2,6 @@
 package ipod
 
 import (
-	"bufio"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -81,12 +80,12 @@ func (pd *PacketReader) ReadPacket() ([]byte, error) {
 }
 
 type PacketWriter struct {
-	w *bufio.Writer
+	w io.Writer
 }
 
 func NewPacketWriter(w io.Writer) *PacketWriter {
 	return &PacketWriter{
-		w: bufio.NewWriterSize(w, minPacketBufSize),
+		w: w,
 	}
 }
 
@@ -108,5 +107,5 @@ func (pw *PacketWriter) WritePacket(pkt []byte) error {
 
 	pw.w.Write([]byte{crc.Sum8()})
 
-	return pw.w.Flush()
+	return nil
 }
