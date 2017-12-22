@@ -62,6 +62,13 @@ func main() {
 
 	app := cli.NewApp()
 	app.Name = "ipod"
+	app.Authors = []cli.Author{
+		cli.Author{
+			Name: "Andrew Onyshchuk",
+		},
+	}
+	app.Usage = "ipod accessory protocol client"
+	app.HideVersion = true
 
 	app.ErrWriter = os.Stderr
 	app.Flags = []cli.Flag{
@@ -163,9 +170,9 @@ func main() {
 			},
 		},
 		{
-			Name:    "dump",
-			Aliases: []string{"d"},
-			Usage:   "read and dump a trace file",
+			Name:    "view",
+			Aliases: []string{"v"},
+			Usage:   "view a trace file",
 			Action: func(c *cli.Context) error {
 				path := c.Args().First()
 				if path == "" {
