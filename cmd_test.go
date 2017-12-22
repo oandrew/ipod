@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/oandrew/ipod"
+	"github.com/oandrew/ipod/lingo-audio"
 )
 
 type CustomPayload struct {
@@ -84,5 +85,33 @@ func TestCommand_UnmarshalBinary(t *testing.T) {
 			}
 
 		})
+	}
+}
+
+func BenchmarkCommand_MarshalBinary(b *testing.B) {
+	cmd := ipod.Command{
+		ID:          ipod.NewLingoCmdID(0x0a, 0x03),
+		Transaction: ipod.NewTransaction(0x03e7),
+		Payload: audio.RetAccSampleRateCaps{
+			SampleRates: []uint32{8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000},
+		},
+	}
+	for i := 0; i < b.N; i++ {
+		cmd.MarshalBinary()
+	}
+}
+
+func BenchmarkCommand_UnmarshalBinary(b *testing.B) {
+	packet := []byte{
+		0x0a, 0x03, 0x03, 0xe7, 0x00, 0x00, 0x1f, 0x40,
+		0x00, 0x00, 0x2b, 0x11, 0x00, 0x00, 0x2e, 0xe0,
+		0x00, 0x00, 0x3e, 0x80, 0x00, 0x00, 0x56, 0x22,
+		0x00, 0x00, 0x5d, 0xc0, 0x00, 0x00, 0x7d, 0x00,
+		0x00, 0x00, 0xac, 0x44, 0x00, 0x00, 0xbb, 0x80,
+	}
+
+	for i := 0; i < b.N; i++ {
+		var cmd ipod.Command
+		cmd.UnmarshalBinary(packet)
 	}
 }
