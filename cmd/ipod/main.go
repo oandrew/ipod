@@ -231,6 +231,7 @@ func logCmd(cmd *ipod.Command, err error, msg string) {
 }
 
 func processFrames(frameTransport ipod.FrameReadWriter) {
+	outFrameBuf := bytes.Buffer{}
 	for {
 		inFrame, err := frameTransport.ReadFrame()
 		if err == io.EOF {
@@ -265,7 +266,7 @@ func processFrames(frameTransport ipod.FrameReadWriter) {
 			handlePacket(&outCmdBuf, inCmdBuf.Commands[i])
 		}
 
-		outFrameBuf := bytes.Buffer{}
+		outFrameBuf.Reset()
 		packetWriter := ipod.NewPacketWriter(&outFrameBuf)
 		for i := range outCmdBuf.Commands {
 			outCmd := outCmdBuf.Commands[i]
