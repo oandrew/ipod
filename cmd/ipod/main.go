@@ -120,8 +120,8 @@ func main() {
 				le.Info("device opened")
 
 				var rw io.ReadWriter = f
-				if tracePath := c.String("trace"); tracePath != "" {
-					traceFile, err := openTraceFile(tracePath)
+				if tracePath := c.String("write-trace"); tracePath != "" {
+					traceFile, err := newTraceFile(tracePath)
 					le := log.WithField("path", tracePath)
 					if err != nil {
 						le.WithError(err).Errorf("could not create a trace file")
