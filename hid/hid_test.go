@@ -178,7 +178,7 @@ func BenchmarkEncoder(b *testing.B) {
 		0x7d, 0x00, 0x00, 0x00, 0xac, 0x44, 0x00, 0x00,
 		0xbb, 0x80, 0x3d, 0x00, 0x00, 0x00, 0x00,
 	}
-	e := hid.NewEncoderDefault(hid.NewRawReportWriter(ioutil.Discard))
+	e := hid.NewEncoderDefault(hid.NewReportWriter(ioutil.Discard))
 	for i := 0; i < b.N; i++ {
 		e.WriteFrame(frame)
 	}
