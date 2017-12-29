@@ -13,11 +13,6 @@ type ReportWriter interface {
 	WriteReport(Report) error
 }
 
-type ReportReadWriter interface {
-	ReportReader
-	ReportWriter
-}
-
 type SingleReport []byte
 
 func (s SingleReport) ReadReport() (Report, error) {
@@ -50,7 +45,7 @@ func (rr *rawReportReader) ReadReport() (Report, error) {
 	}, nil
 }
 
-func NewRawReportReader(r io.Reader) ReportReader {
+func NewReportReader(r io.Reader) ReportReader {
 	return &rawReportReader{
 		r:   r,
 		buf: make([]byte, maxRawSize),
@@ -71,18 +66,8 @@ func (rw *rawReportWriter) WriteReport(report Report) error {
 	return err
 }
 
-func NewRawReportWriter(w io.Writer) ReportWriter {
+func NewReportWriter(w io.Writer) ReportWriter {
 	return &rawReportWriter{
 		w: w,
-	}
-}
-
-func NewCharDevReportTransport(rw io.ReadWriter) ReportReadWriter {
-	return struct {
-		ReportReader
-		ReportWriter
-	}{
-		NewRawReportReader(rw),
-		NewRawReportWriter(rw),
 	}
 }

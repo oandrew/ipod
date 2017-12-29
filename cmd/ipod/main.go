@@ -52,11 +52,6 @@ type UsageError struct {
 	error
 }
 
-type ReadWriter struct {
-	io.Reader
-	io.Writer
-}
-
 func main() {
 	log.Formatter = &TextFormatter{}
 
@@ -137,8 +132,9 @@ func main() {
 					le.Warningf("writing trace")
 					rw = trace.NewTracer(traceFile, f)
 				}
-				hidReportTransport := hid.NewCharDevReportTransport(rw)
-				frameTransport := hid.NewTransport(hidReportTransport, hid.DefaultReportDefs)
+
+				reportR, reportW := hid.NewReportReader(rw), hid.NewReportWriter(rw)
+				frameTransport := hid.NewTransport(reportR, reportW, hid.DefaultReportDefs)
 				processFrames(frameTransport)
 				return nil
 			},
@@ -162,9 +158,9 @@ func main() {
 				le.Warningf("trace file opened")
 
 				tr := trace.NewReader(f)
-				trw := ReadWriter{trace.NewTraceDirReader(tr, trace.DirIn), ioutil.Discard}
-				hidReportTransport := hid.NewCharDevReportTransport(trw)
-				frameTransport := hid.NewTransport(hidReportTransport, hid.DefaultReportDefs)
+				tdr := trace.NewTraceDirReader(tr, trace.DirIn)
+				reportR, reportW := hid.NewReportReader(tdr), hid.NewReportWriter(ioutil.Discard)
+				frameTransport := hid.NewTransport(reportR, reportW, hid.DefaultReportDefs)
 				processFrames(frameTransport)
 				return nil
 			},
@@ -347,7 +343,7 @@ func dumpTrace(tr *trace.Reader) {
 		}
 		dir := head.Dir
 		tdr := trace.NewQueueDirReader(&q, dir)
-		d := hid.NewDecoderDefault(hid.NewRawReportReader(tdr))
+		d := hid.NewDecoderDefault(hid.NewReportReader(tdr))
 
 		frame, err := d.ReadFrame()
 		if err == io.EOF {

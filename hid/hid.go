@@ -126,9 +126,9 @@ type Transport struct {
 	*Encoder
 }
 
-func NewTransport(rw ReportReadWriter, defs ReportDefs) *Transport {
+func NewTransport(r ReportReader, w ReportWriter, defs ReportDefs) *Transport {
 	return &Transport{
-		Decoder: NewDecoder(rw, defs),
-		Encoder: NewEncoder(rw, defs),
+		Decoder: NewDecoder(r, defs),
+		Encoder: NewEncoder(w, defs),
 	}
 }
