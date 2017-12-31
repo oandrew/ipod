@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -52,8 +53,18 @@ type UsageError struct {
 	error
 }
 
+var logBufW *bufio.Writer
+
 func main() {
-	log.Formatter = &TextFormatter{}
+	logOut := os.Stderr
+	log.Formatter = &TextFormatter{
+		Colored: checkIfTerminal(logOut),
+	}
+
+	logBufW = bufio.NewWriter(logOut)
+	defer logBufW.Flush()
+
+	log.Out = logBufW
 
 	app := cli.NewApp()
 	app.Name = "ipod"
@@ -235,7 +246,9 @@ func logCmd(cmd *ipod.Command, err error, msg string) {
 
 func processFrames(frameTransport ipod.FrameReadWriter) {
 	outFrameBuf := bytes.Buffer{}
+	defer logBufW.Flush()
 	for {
+		logBufW.Flush()
 		inFrame, err := frameTransport.ReadFrame()
 		if err == io.EOF {
 			break

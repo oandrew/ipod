@@ -7,7 +7,6 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -41,15 +40,7 @@ func checkIfTerminal(w io.Writer) bool {
 }
 
 type TextFormatter struct {
-	DisableColors bool
-	isTerminal    bool
-	sync.Once
-}
-
-func (f *TextFormatter) init(entry *logrus.Entry) {
-	if entry.Logger != nil {
-		f.isTerminal = checkIfTerminal(entry.Logger.Out)
-	}
+	Colored bool
 }
 
 func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
@@ -67,8 +58,6 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		b = &bytes.Buffer{}
 	}
 
-	f.Do(func() { f.init(entry) })
-
 	f.print(b, entry, keys)
 
 	b.WriteByte('\n')
@@ -76,7 +65,7 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 }
 
 func (f *TextFormatter) colored() bool {
-	return f.isTerminal && !f.DisableColors
+	return f.Colored
 }
 
 func (f *TextFormatter) print(b *bytes.Buffer, entry *logrus.Entry, keys []string) {
