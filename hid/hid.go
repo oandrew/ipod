@@ -24,6 +24,13 @@ type Encoder struct {
 	w          ReportWriter
 }
 
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 func (e *Encoder) WriteFrame(data []byte) error {
 	offset := 0
 	bytesLeft := len(data)
@@ -75,10 +82,12 @@ func NewEncoderDefault(w ReportWriter) *Encoder {
 type Decoder struct {
 	reportDefs ReportDefs
 	r          ReportReader
+	buf        bytes.Buffer
 }
 
 func (e *Decoder) ReadFrame() ([]byte, error) {
-	buf := bytes.Buffer{}
+	buf := &e.buf
+	buf.Reset()
 	done := false
 	for !done {
 		report, err := e.r.ReadReport()
@@ -90,20 +99,20 @@ func (e *Decoder) ReadFrame() ([]byte, error) {
 			return nil, err
 		}
 
-		reportData := make([]byte, reportDef.MaxPayload())
-		n := copy(reportData, report.Data)
+		n := min(len(report.Data), reportDef.MaxPayload())
+		reportData := report.Data[:n]
 		switch report.LinkControl {
 		case LinkControlDone:
 			buf.Reset()
-			buf.Write(reportData[:n])
+			buf.Write(reportData)
 			done = true
 		case LinkControlMoreToFollow:
 			buf.Reset()
-			buf.Write(reportData[:n])
+			buf.Write(reportData)
 		case LinkControlContinue | LinkControlMoreToFollow:
-			buf.Write(reportData[:n])
+			buf.Write(reportData)
 		case LinkControlContinue:
-			buf.Write(reportData[:n])
+			buf.Write(reportData)
 			done = true
 		}
 	}
