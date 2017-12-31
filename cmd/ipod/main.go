@@ -213,7 +213,7 @@ func logFrame(frame []byte, err error, msg string) {
 	}
 	le.Infof(msg)
 	if log.Level == logrus.DebugLevel {
-		log.Debug(spew.Sdump(frame))
+		spew.Fdump(logBufW, frame)
 	}
 
 }
@@ -227,7 +227,7 @@ func logPacket(pkt []byte, err error, msg string) {
 	}
 	le.Infof(msg)
 	if log.Level == logrus.DebugLevel {
-		log.Debug(spew.Sdump(pkt))
+		spew.Fdump(logBufW, pkt)
 	}
 }
 
@@ -239,7 +239,7 @@ func logCmd(cmd *ipod.Command, err error, msg string) {
 	}
 	le.Infof(msg)
 	if log.Level == logrus.DebugLevel {
-		log.Debug(spew.Sdump(cmd))
+		spew.Fdump(logBufW, cmd)
 	}
 
 }
