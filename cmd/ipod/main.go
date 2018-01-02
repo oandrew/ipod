@@ -56,7 +56,7 @@ type UsageError struct {
 var logBufW *bufio.Writer
 
 func main() {
-	logOut := os.Stderr
+	logOut := os.Stdout
 	log.Formatter = &TextFormatter{
 		Colored: checkIfTerminal(logOut),
 	}
