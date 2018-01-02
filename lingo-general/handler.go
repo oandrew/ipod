@@ -192,7 +192,7 @@ func HandleGeneral(req *ipod.Command, tr ipod.CommandWriter, dev DeviceGeneral) 
 		switch msg.AccEndIDPSStatus {
 		case AccEndIDPSStatusContinue:
 			ipod.Respond(req, tr, &IDPSStatus{Status: IDPSStatusOK})
-			ipod.Send(tr, &GetDevAuthenticationInfo{}, req.Transaction.Delta(1))
+			ipod.Send(tr, &GetDevAuthenticationInfo{}, ipod.NewTransaction(0x01))
 
 			// get dev auth info
 		case AccEndIDPSStatusReset:
