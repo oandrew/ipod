@@ -63,6 +63,9 @@ func main() {
 
 	logBufW = bufio.NewWriter(logOut)
 	defer logBufW.Flush()
+	logrus.RegisterExitHandler(func() {
+		logBufW.Flush()
+	})
 
 	log.Out = logBufW
 
