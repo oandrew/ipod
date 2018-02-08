@@ -1,11 +1,18 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
+
+	"github.com/davecgh/go-spew/spew"
+
 	"github.com/oandrew/ipod/lingo-general"
 )
 
 type DevGeneral struct {
 	uimode general.UIMode
+
+	tokens []general.FIDTokenValue
 }
 
 var _ general.DeviceGeneral = &DevGeneral{}
@@ -56,9 +63,6 @@ func (d *DevGeneral) PrefSettingID(classID uint8) uint8 {
 func (d *DevGeneral) SetPrefSettingID(classID uint8, settingID uint8, restoreOnExit bool) {
 }
 
-func (d *DevGeneral) StartIDPS() {
-}
-
 func (d *DevGeneral) SetEventNotificationMask(mask uint64) {
 
 }
@@ -77,4 +81,51 @@ func (d *DevGeneral) CancelCommand(lingo uint8, cmd uint16, transaction uint16) 
 
 func (d *DevGeneral) MaxPayload() uint16 {
 	return 65535
+}
+
+func (d *DevGeneral) StartIDPS() {
+	d.tokens = make([]general.FIDTokenValue, 0)
+}
+
+func (d *DevGeneral) SetToken(token general.FIDTokenValue) error {
+	d.tokens = append(d.tokens, token)
+	return nil
+}
+
+func (d *DevGeneral) EndIDPS(status general.AccEndIDPSStatus) {
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "Tokens:\n")
+	for _, token := range d.tokens {
+
+		fmt.Fprintf(&buf, "* Token: %T\n", token.Token)
+		//log.Printf("New token: %T", token.Token)
+		switch t := token.Token.(type) {
+		case *general.FIDIdentifyToken:
+
+		case *general.FIDAccCapsToken:
+			for _, c := range general.AccCaps {
+				if t.AccCapsBitmask&uint64(c) != 0 {
+					fmt.Fprintf(&buf, "Capability: %v\n", c)
+				}
+			}
+		case *general.FIDAccInfoToken:
+			key := general.AccInfoType(t.AccInfoType).String()
+			fmt.Fprintf(&buf, "%s: %s\n", key, spew.Sdump(t.Value))
+
+		case *general.FIDiPodPreferenceToken:
+
+		case *general.FIDEAProtocolToken:
+
+		case *general.FIDBundleSeedIDPrefToken:
+
+		case *general.FIDScreenInfoToken:
+
+		case *general.FIDEAProtocolMetadataToken:
+
+		case *general.FIDMicrophoneCapsToken:
+
+		}
+
+	}
+	log.Print(buf.String())
 }

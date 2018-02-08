@@ -20,6 +20,8 @@ type DeviceGeneral interface {
 	SetPrefSettingID(classID, settingID uint8, restoreOnExit bool)
 
 	StartIDPS()
+	EndIDPS(status AccEndIDPSStatus)
+	SetToken(token FIDTokenValue) error
 
 	SetEventNotificationMask(mask uint64)
 	EventNotificationMask() uint64
@@ -187,8 +189,12 @@ func HandleGeneral(req *ipod.Command, tr ipod.CommandWriter, dev DeviceGeneral) 
 		dev.StartIDPS()
 		ipod.Respond(req, tr, ackSuccess(req))
 	case *SetFIDTokenValues:
+		for _, token := range msg.FIDTokenValues {
+			dev.SetToken(token)
+		}
 		ipod.Respond(req, tr, ackFIDTokens(msg))
 	case *EndIDPS:
+		dev.EndIDPS(msg.AccEndIDPSStatus)
 		switch msg.AccEndIDPSStatus {
 		case AccEndIDPSStatusContinue:
 			ipod.Respond(req, tr, &IDPSStatus{Status: IDPSStatusOK})

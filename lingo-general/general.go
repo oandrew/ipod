@@ -396,6 +396,30 @@ func (t *FIDIdentifyToken) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
+//go:generate stringer -type=AccCapBit
+type AccCapBit uint32
+
+const (
+	AccCapAnalogLineOut AccCapBit = 1 << iota
+	AccCapAnalogLineIn
+	AccCapAnalogVideoOut
+	_
+	AccCapUSBAudio
+	_
+	_
+	_
+	_
+	AccCapAppComm
+	_
+	AccCapCheckVolume
+)
+
+var AccCaps = []AccCapBit{
+	AccCapAnalogLineOut, AccCapAnalogLineIn,
+	AccCapAnalogVideoOut, AccCapUSBAudio,
+	AccCapAppComm, AccCapCheckVolume,
+}
+
 type FIDAccCapsToken struct {
 	AccCapsBitmask uint64
 }
@@ -405,6 +429,19 @@ func (t *FIDAccCapsToken) UnmarshalBinary(data []byte) error {
 	binary.Read(r, binary.BigEndian, &t.AccCapsBitmask)
 	return nil
 }
+
+//go:generate stringer -type=AccInfoType
+type AccInfoType uint8
+
+const (
+	AccInfoName       AccInfoType = 0x01
+	AccInfoFirmware   AccInfoType = 0x04
+	AccInfoHardware   AccInfoType = 0x05
+	AccInfoMfr        AccInfoType = 0x06
+	AccInfoModel      AccInfoType = 0x07
+	AccInfoSerial     AccInfoType = 0x08
+	AccInfoMaxPayload AccInfoType = 0x09
+)
 
 type FIDAccInfoToken struct {
 	AccInfoType byte
