@@ -7,11 +7,12 @@ import (
 	"github.com/davecgh/go-spew/spew"
 
 	"github.com/oandrew/ipod/lingo-general"
+
+	"github.com/fullsailor/pkcs7"
 )
 
 type DevGeneral struct {
 	uimode general.UIMode
-
 	tokens []general.FIDTokenValue
 }
 
@@ -128,4 +129,17 @@ func (d *DevGeneral) EndIDPS(status general.AccEndIDPSStatus) {
 
 	}
 	log.Print(buf.String())
+}
+
+func (d *DevGeneral) AccAuthCert(cert []byte) {
+	pkcs, err := pkcs7.Parse(cert)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	if len(pkcs.Certificates) >= 1 {
+		cn := pkcs.Certificates[0].Subject.CommonName
+		log.Infof("cert: CN=%s", cn)
+	}
+
 }

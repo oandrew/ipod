@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"sync/atomic"
 
 	"log"
 )
@@ -150,12 +151,22 @@ func Respond(req *Command, pw CommandWriter, payload interface{}) {
 	pw.WriteCommand(cmd)
 }
 
-func Send(pw CommandWriter, payload interface{}, tr *Transaction) {
+var trxCounter uint32
+
+func TrxReset() {
+	atomic.StoreUint32(&trxCounter, 0)
+}
+func TrxNext() *Transaction {
+	trx := atomic.AddUint32(&trxCounter, 1)
+	return NewTransaction(uint16(trx))
+}
+
+func Send(pw CommandWriter, payload interface{}) {
 	cmd, err := BuildCommand(payload)
 	if err != nil {
 		return
 	}
-	cmd.Transaction = tr
+	cmd.Transaction = TrxNext()
 	pw.WriteCommand(cmd)
 }
 

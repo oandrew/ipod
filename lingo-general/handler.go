@@ -22,6 +22,7 @@ type DeviceGeneral interface {
 	StartIDPS()
 	EndIDPS(status AccEndIDPSStatus)
 	SetToken(token FIDTokenValue) error
+	AccAuthCert(cert []byte)
 
 	SetEventNotificationMask(mask uint64)
 	EventNotificationMask() uint64
@@ -82,6 +83,8 @@ func ackFIDTokens(tokens *SetFIDTokenValues) *RetFIDTokenValueACKs {
 	return resp
 }
 
+var accCertBuf bytes.Buffer
+
 func HandleGeneral(req *ipod.Command, tr ipod.CommandWriter, dev DeviceGeneral) error {
 	switch msg := req.Payload.(type) {
 	case *RequestRemoteUIMode:
@@ -125,11 +128,15 @@ func HandleGeneral(req *ipod.Command, tr ipod.CommandWriter, dev DeviceGeneral) 
 	//GetDevAuthenticationInfo
 	case *RetDevAuthenticationInfo:
 		if msg.Major >= 2 {
+			if msg.CertCurrentSection == 0 {
+				accCertBuf.Reset()
+			}
+			accCertBuf.Write(msg.CertData)
 			if msg.CertCurrentSection < msg.CertMaxSection {
 				ipod.Respond(req, tr, ackSuccess(req))
 			} else {
 				ipod.Respond(req, tr, &AckDevAuthenticationInfo{Status: DevAuthInfoStatusSupported})
-
+				dev.AccAuthCert(accCertBuf.Bytes())
 				ipod.Respond(req, tr, &GetDevAuthenticationSignatureV2{Counter: 0})
 			}
 		} else {
@@ -186,6 +193,7 @@ func HandleGeneral(req *ipod.Command, tr ipod.CommandWriter, dev DeviceGeneral) 
 		ipod.Respond(req, tr, ackSuccess(req))
 
 	case *StartIDPS:
+		ipod.TrxReset()
 		dev.StartIDPS()
 		ipod.Respond(req, tr, ackSuccess(req))
 	case *SetFIDTokenValues:
@@ -198,7 +206,7 @@ func HandleGeneral(req *ipod.Command, tr ipod.CommandWriter, dev DeviceGeneral) 
 		switch msg.AccEndIDPSStatus {
 		case AccEndIDPSStatusContinue:
 			ipod.Respond(req, tr, &IDPSStatus{Status: IDPSStatusOK})
-			ipod.Send(tr, &GetDevAuthenticationInfo{}, ipod.NewTransaction(0x01))
+			ipod.Send(tr, &GetDevAuthenticationInfo{})
 
 			// get dev auth info
 		case AccEndIDPSStatusReset:

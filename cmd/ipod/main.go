@@ -1,11 +1,11 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"time"
 
 	"os"
 
@@ -53,21 +53,13 @@ type UsageError struct {
 	error
 }
 
-var logBufW *bufio.Writer
-
 func main() {
 	logOut := os.Stdout
 	log.Formatter = &TextFormatter{
 		Colored: checkIfTerminal(logOut),
 	}
 
-	logBufW = bufio.NewWriter(logOut)
-	defer logBufW.Flush()
-	logrus.RegisterExitHandler(func() {
-		logBufW.Flush()
-	})
-
-	log.Out = logBufW
+	log.Out = logOut
 
 	app := cli.NewApp()
 	app.Name = "ipod"
@@ -87,7 +79,7 @@ func main() {
 		},
 	}
 
-	exitErrorHandler := func(c *cli.Context, err error) {
+	app.ExitErrHandler = func(c *cli.Context, err error) {
 		if err != nil {
 			if _, ok := err.(UsageError); ok {
 				fmt.Fprintf(c.App.ErrWriter, "usage error: %v\n\n", err)
@@ -98,19 +90,25 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	app.ExitErrHandler = exitErrorHandler
 
 	app.Before = func(c *cli.Context) error {
 		if c.GlobalBool("debug") {
 			log.SetLevel(logrus.DebugLevel)
 		}
 
-		log.Debugf("Registered lingos:\n%s", ipod.DumpLingos())
-
 		return nil
 	}
 
 	app.Commands = []cli.Command{
+		{
+			Name:  "lingos",
+			Usage: "print all lingos/commands/ids",
+			Action: func(c *cli.Context) error {
+				fmt.Println("Registered lingos:")
+				fmt.Println(ipod.DumpLingos())
+				return nil
+			},
+		},
 		{
 			Name:      "serve",
 			Aliases:   []string{"s"},
@@ -201,6 +199,79 @@ func main() {
 				return nil
 			},
 		},
+		{
+			Name: "send",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "write-trace, w",
+					Usage: "Write trace to a `file`",
+				},
+			},
+			Usage: "acc mode / send accessory requests from a trace file",
+			Action: func(c *cli.Context) error {
+				path := c.Args().Get(0)
+				if path == "" {
+					return UsageError{fmt.Errorf("device path is missing")}
+				}
+				f, err := openDevice(path)
+				le := log.WithField("path", path)
+				if err != nil {
+					le.WithError(err).Errorf("could not open the device")
+					return err
+				}
+				le.Info("device opened")
+
+				tpath := c.Args().Get(1)
+				if tpath == "" {
+					return UsageError{cli.NewExitError("trace file path is missing", 1)}
+				}
+
+				tf, err := openTraceFile(tpath)
+				tle := log.WithField("path", tpath)
+				if err != nil {
+					tle.WithError(err).Errorf("could not open the trace file")
+					return err
+				}
+				tle.Warningf("trace file opened")
+				tr := trace.NewReader(tf)
+				tdr := trace.NewTraceDirReader(tr, trace.DirIn)
+
+				var rw io.ReadWriter = f
+				if tracePath := c.String("write-trace"); tracePath != "" {
+					traceFile, err := newTraceFile(tracePath)
+					le := log.WithField("path", tracePath)
+					if err != nil {
+						le.WithError(err).Errorf("could not create a trace file")
+						return err
+					}
+					le.Warningf("writing trace")
+					rw = trace.NewTracer(traceFile, f)
+				}
+				reportR, reportW := hid.NewReportReader(rw), hid.NewReportWriter(rw)
+				dummyW := hid.NewReportWriter(ioutil.Discard)
+				traceR := hid.NewReportReader(tdr)
+
+				frameTransport := hid.NewTransport(reportR, dummyW, hid.DefaultReportDefs)
+
+				go processFrames(frameTransport)
+
+				for {
+					report, err := traceR.ReadReport()
+					if err != nil {
+						break
+					}
+
+					reportW.WriteReport(report)
+					log.Infof("writing report\n%s", spew.Sdump(report))
+
+					time.Sleep(1000 * time.Millisecond)
+				}
+
+				select {}
+
+				return nil
+			},
+		},
 	}
 
 	app.Setup()
@@ -216,7 +287,7 @@ func logFrame(frame []byte, err error, msg string) {
 	}
 	le.Infof(msg)
 	if log.Level == logrus.DebugLevel {
-		spew.Fdump(logBufW, frame)
+		spew.Fdump(log.Out, frame)
 	}
 
 }
@@ -230,7 +301,7 @@ func logPacket(pkt []byte, err error, msg string) {
 	}
 	le.Infof(msg)
 	if log.Level == logrus.DebugLevel {
-		spew.Fdump(logBufW, pkt)
+		spew.Fdump(log.Out, pkt)
 	}
 }
 
@@ -242,16 +313,15 @@ func logCmd(cmd *ipod.Command, err error, msg string) {
 	}
 	le.Infof(msg)
 	if log.Level == logrus.DebugLevel {
-		spew.Fdump(logBufW, cmd)
+		spew.Fdump(log.Out, cmd)
 	}
 
 }
 
 func processFrames(frameTransport ipod.FrameReadWriter) {
 	outFrameBuf := bytes.Buffer{}
-	defer logBufW.Flush()
+	outFrameBuf.Grow(1024)
 	for {
-		logBufW.Flush()
 		inFrame, err := frameTransport.ReadFrame()
 		if err == io.EOF {
 			break
@@ -285,8 +355,6 @@ func processFrames(frameTransport ipod.FrameReadWriter) {
 			handlePacket(&outCmdBuf, inCmdBuf.Commands[i])
 		}
 
-		outFrameBuf.Reset()
-		packetWriter := ipod.NewPacketWriter(&outFrameBuf)
 		for i := range outCmdBuf.Commands {
 			outCmd := outCmdBuf.Commands[i]
 			logCmd(outCmd, nil, ">> CMD")
@@ -294,15 +362,13 @@ func processFrames(frameTransport ipod.FrameReadWriter) {
 			outPacket, err := outCmd.MarshalBinary()
 			logPacket(outPacket, err, ">> PACKET")
 
+			outFrameBuf.Reset()
+			packetWriter := ipod.NewPacketWriter(&outFrameBuf)
 			packetWriter.WritePacket(outPacket)
+			outFrame := outFrameBuf.Bytes()
+			outFrameErr := frameTransport.WriteFrame(outFrame)
+			logFrame(outFrame, outFrameErr, ">> FRAME")
 		}
-
-		if outFrameBuf.Len() == 0 {
-			continue
-		}
-		outFrame := outFrameBuf.Bytes()
-		outFrameErr := frameTransport.WriteFrame(outFrame)
-		logFrame(outFrame, outFrameErr, ">> FRAME")
 
 	}
 	log.Warnf("EOF")
@@ -313,10 +379,13 @@ var devGeneral = &DevGeneral{}
 func handlePacket(cmdWriter ipod.CommandWriter, cmd *ipod.Command) {
 	switch cmd.ID.LingoID() {
 	case general.LingoGeneralID:
-		general.HandleGeneral(cmd, cmdWriter, devGeneral)
-		if _, ok := cmd.Payload.(*general.RetDevAuthenticationSignature); ok {
-			audio.Start(cmdWriter)
+		if auth, ok := cmd.Payload.(*general.RetDevAuthenticationInfo); ok {
+			if auth.Major >= 2 && auth.CertCurrentSection == auth.CertMaxSection || auth.Major < 2 {
+				audio.Start(cmdWriter)
+			}
 		}
+		general.HandleGeneral(cmd, cmdWriter, devGeneral)
+
 	case simpleremote.LingoSimpleRemotelID:
 		//todo
 		log.Warn("Lingo SimpleRemote is not supported yet")

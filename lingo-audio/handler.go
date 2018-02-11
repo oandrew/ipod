@@ -16,9 +16,7 @@ type DeviceAudio interface {
 // }
 
 func Start(tr ipod.CommandWriter) {
-	p, _ := ipod.BuildCommand(&GetAccSampleRateCaps{})
-	p.Transaction = ipod.NewTransaction(999)
-	tr.WriteCommand(p)
+	ipod.Send(tr, &GetAccSampleRateCaps{})
 }
 
 func HandleAudio(req *ipod.Command, tr ipod.CommandWriter, dev DeviceAudio) error {

@@ -1,14 +1,18 @@
 /*
 ipod talks to an ipod accessory using iap protocol.
 
-It has two modes:
-Using -d flag, it will read and write iap packets
-from/to specified char device i.e. the one provided by ipod-gadget.
-Using -r flag, it will read incoming iap packets
-from  a trace file and discard responses. Used for testing
+# with debug logging
+./ipod -d serve /dev/iap0
 
-With the -w flag, it will also save the trace
-to a specified file that can be later used with -r
+# save a trace file
+./ipod -d serve -w ipod.trace /dev/iap0
+
+# simulate incoming requests from a trace file
+./ipod -d replay ./ipod.trace
+
+# view a trace file
+./ipod -d view ./ipod.trace
+
 
 Each line of a trace file starts with a
  '< ' for incoming requests
@@ -25,9 +29,6 @@ represents an incoming request byte sequence from the accessory
 and an outgoing response byte sequence from the ipod
  0x02,0x01,0x00
 
-
-The -v flag enables verbose logging including detailed structure
-on each request/response
 
 */
 package main

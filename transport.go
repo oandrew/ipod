@@ -20,15 +20,15 @@ type FrameReadWriter interface {
 }
 
 // DummyFrameReadWriter is a no-op implementation of FrameReadWriter
-// type DummyFrameReadWriter struct{}
+type DummyFrameReadWriter struct{}
 
-// func (d *DummyFrameReadWriter) ReadFrame() ([]byte, error) {
-// 	return []byte{}, nil
-// }
+func (d *DummyFrameReadWriter) ReadFrame() ([]byte, error) {
+	return []byte{}, nil
+}
 
-// func (d *DummyFrameReadWriter) WriteFrame([]byte) error {
-// 	return nil
-// }
+func (d *DummyFrameReadWriter) WriteFrame([]byte) error {
+	return nil
+}
 
 // type packetReader struct {
 // 	r *RawPacketReader
