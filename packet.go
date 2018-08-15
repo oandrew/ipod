@@ -2,6 +2,7 @@
 package ipod
 
 import (
+	"bufio"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -19,18 +20,28 @@ const (
 )
 
 type PacketReader struct {
-	//r *bufio.Reader
-	r io.Reader
+	r *bufio.Reader
+	//r io.Reader
 }
 
 func NewPacketReader(r io.Reader) *PacketReader {
 	return &PacketReader{
-		//r: bufio.NewReader(r),
-		r: r,
+		r: bufio.NewReaderSize(r, 512),
+		//r: r,
 	}
 }
 
 func (pd *PacketReader) ReadPacket() ([]byte, error) {
+	for {
+		next, err := pd.r.ReadByte()
+		if err != nil {
+			return nil, err
+		}
+		if next == PacketStartByte {
+			pd.r.UnreadByte()
+			break
+		}
+	}
 	var header [4]byte
 	if _, err := pd.r.Read(header[:2]); err != nil {
 		return nil, err
