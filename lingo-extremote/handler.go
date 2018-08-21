@@ -147,7 +147,7 @@ func HandleExtRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceExtRemo
 			PixelFormat: 0x01,
 		})
 	case *ResetDBSelectionHierarchy:
-		//noop
+		ipod.Respond(req, tr, &ACK{Status: ACKStatusFailed, CmdID: req.ID.CmdID()})
 
 	case *GetDBiTunesInfo:
 	// RetDBiTunesInfo:
