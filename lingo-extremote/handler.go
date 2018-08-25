@@ -80,7 +80,7 @@ func HandleExtRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceExtRemo
 		ipod.Respond(req, tr, ackSuccess(req))
 	case *GetNumberCategorizedDBRecords:
 		ipod.Respond(req, tr, &ReturnNumberCategorizedDBRecords{
-			RecordCount: 0,
+			RecordCount: 1,
 		})
 	case *RetrieveCategorizedDatabaseRecords:
 		ipod.Respond(req, tr, &ReturnCategorizedDatabaseRecord{})
