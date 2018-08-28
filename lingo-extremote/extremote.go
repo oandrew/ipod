@@ -49,6 +49,7 @@ var Lingos struct {
 	GetIndexedPlayingTrackAlbumName            `id:"0x0024"`
 	ReturnIndexedPlayingTrackAlbumName         `id:"0x0025"`
 	SetPlayStatusChangeNotification            `id:"0x0026"`
+	SetPlayStatusChangeNotificationShort       `id:"0x0026"`
 	PlayStatusChangeNotification               `id:"0x0027"`
 	PlayCurrentSelection                       `id:"0x0028"`
 	PlayControl                                `id:"0x0029"`
@@ -363,6 +364,12 @@ func (s *ReturnIndexedPlayingTrackAlbumName) UnmarshalBinary(data []byte) error 
 
 type SetPlayStatusChangeNotification struct {
 	EventMask uint32
+}
+
+// SetPlayStatusChangeNotificationShort is another possible version of SetPlayStatusChangeNotification,
+// that uses a single bit instead of a bitmask to enable/disable all play-status-change notifications
+type SetPlayStatusChangeNotificationShort struct {
+	Enabled bool
 }
 type PlayStatusChangeNotification struct {
 	Status byte // finish

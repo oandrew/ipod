@@ -80,7 +80,7 @@ func HandleExtRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceExtRemo
 		ipod.Respond(req, tr, ackSuccess(req))
 	case *GetNumberCategorizedDBRecords:
 		ipod.Respond(req, tr, &ReturnNumberCategorizedDBRecords{
-			RecordCount: 0,
+			RecordCount: 1,
 		})
 	case *RetrieveCategorizedDatabaseRecords:
 		ipod.Respond(req, tr, &ReturnCategorizedDatabaseRecord{})
@@ -108,7 +108,8 @@ func HandleExtRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceExtRemo
 		})
 	case *SetPlayStatusChangeNotification:
 		ipod.Respond(req, tr, ackSuccess(req))
-	//case *PlayStatusChangeNotification:
+	case *SetPlayStatusChangeNotificationShort:
+		ipod.Respond(req, tr, ackSuccess(req))
 	case *PlayCurrentSelection:
 		ipod.Respond(req, tr, ackSuccess(req))
 	case *PlayControl:
@@ -146,7 +147,7 @@ func HandleExtRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceExtRemo
 			PixelFormat: 0x01,
 		})
 	case *ResetDBSelectionHierarchy:
-		//noop
+		ipod.Respond(req, tr, &ACK{Status: ACKStatusFailed, CmdID: req.ID.CmdID()})
 
 	case *GetDBiTunesInfo:
 	// RetDBiTunesInfo:
