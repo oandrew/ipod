@@ -162,20 +162,20 @@ func Lookup(id LingoCmdID, payloadSize int) (LookupResult, bool) {
 	if !ok {
 		return LookupResult{}, false
 	}
-	for _, p := range payloads {
-		switch {
-		case p.Size() == uintptr(payloadSize):
-			return LookupResult{
-				Payload:     reflect.New(p).Interface(),
-				Transaction: false,
-			}, true
-		case p.Size() == uintptr(payloadSize-2):
-			return LookupResult{
-				Payload:     reflect.New(p).Interface(),
-				Transaction: true,
-			}, true
-		}
-	}
+	// for _, p := range payloads {
+	// 	switch {
+	// 	case p.Size() == uintptr(payloadSize):
+	// 		return LookupResult{
+	// 			Payload:     reflect.New(p).Interface(),
+	// 			Transaction: false,
+	// 		}, true
+	// 	case p.Size() == uintptr(payloadSize-2):
+	// 		return LookupResult{
+	// 			Payload:     reflect.New(p).Interface(),
+	// 			Transaction: true,
+	// 		}, true
+	// 	}
+	// }
 	if len(payloads) == 1 {
 		return LookupResult{
 			Payload:     reflect.New(payloads[0]).Interface(),
