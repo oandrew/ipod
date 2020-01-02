@@ -19,9 +19,9 @@ New features:
 
 # build and run
 ```
-go build github.com/oandrew/ipod/cmd/ipod
+GO111MODULE=on go build github.com/oandrew/ipod/cmd/ipod
 # or cross compiling
-GOOS=linux GOARCH=arm GOARM=6 go build github.com/oandrew/ipod/cmd/ipod
+GO111MODULE=on GOOS=linux GOARCH=arm GOARM=6 go build github.com/oandrew/ipod/cmd/ipod
 
 # with debug logging
 ./ipod -d serve /dev/iap0
