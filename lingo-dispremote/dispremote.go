@@ -1,6 +1,10 @@
 package dispremote
 
 import (
+	"bytes"
+	"encoding/binary"
+	"errors"
+
 	"github.com/oandrew/ipod"
 )
 
@@ -89,13 +93,159 @@ type GetRemoteEventStatus struct {
 type RetRemoteEventStatus struct {
 	EventStatus uint32
 }
+
+//go:generate stringer -type=InfoType
+type InfoType uint8
+
+const (
+	InfoTypeTrackPositionMs InfoType = iota
+	InfoTypeTrackIndex
+	InfoTypeChapterIndex
+	InfoTypePlayStatus
+	InfoTypeVolume
+	InfoTypePower
+	InfoTypeEqualizer
+	InfoTypeShuffle
+	InfoTypeRepeat
+	InfoTypeDateTime
+	_ //InfoTypeAlarm
+	InfoTypeBacklight
+	InfoTypeHoldSwitch
+	InfoTypeSoundCheck
+	InfoTypeAudiobookSpeed
+	InfoTypeTrackPositionSec
+	InfoTypeVolume2
+)
+
+type InfoTrackPositionMs struct {
+	TrackPositionMs uint32
+}
+type InfoTrackIndex struct {
+	TrackIndex uint32
+}
+type InfoChapterIndex struct {
+	TrackIndex   uint32
+	ChapterCount uint16
+	ChapterIndex uint16
+}
+
+//go:generate stringer -type=PlayStatusType
+type PlayStatusType uint8
+
+const (
+	PlayStatusStopped PlayStatusType = iota
+	PlayStatusPlaying
+	PlayStatusPaused
+	PlayStatusFF
+	PlayStatusREW
+	PlayStatusEndFFREW
+)
+
+type InfoPlayStatus struct {
+	PlayStatus PlayStatusType
+}
+type InfoVolume struct {
+	MuteState     uint8
+	UIVolumeLevel uint8
+}
+type InfoPower struct {
+	PowerState   uint8
+	BatteryLevel uint8
+}
+type InfoEqualizer struct {
+	EqIndex uint32
+}
+type InfoShuffle struct {
+	ShuffleState uint8
+}
+type InfoRepeat struct {
+	RepeatState uint8
+}
+type InfoDateTime struct {
+	Year   uint16
+	Month  uint8
+	Day    uint8
+	Hour   uint8
+	Minute uint8
+}
+type InfoBacklight struct {
+	BacklightLevel uint8
+}
+type InfoHoldSwitch struct {
+	HoldSwitchState uint8
+}
+type InfoSoundCheck struct {
+	SoundCheckState uint8
+}
+type InfoAudiobookSpeed struct {
+	PlaybackSpeed uint8
+}
+type InfoTrackPositionSec struct {
+	TrackPositionSec uint16
+}
+type InfoVolume2 struct {
+	MuteState           uint8
+	UIVolumeLevel       uint8
+	AbsoluteVolumeLevel uint8
+}
+
 type GetiPodStateInfo struct {
-	InfoType byte
+	InfoType InfoType
 }
 type RetiPodStateInfo struct {
-	InfoType byte
-	InfoData []byte
+	InfoType InfoType
+	InfoData interface{}
 }
+
+func (t *RetiPodStateInfo) MarshalBinary() ([]byte, error) {
+	buf := bytes.Buffer{}
+	binary.Write(&buf, binary.BigEndian, t.InfoType)
+	binary.Write(&buf, binary.BigEndian, t.InfoData)
+	return buf.Bytes(), nil
+}
+
+func (t *RetiPodStateInfo) UnmarshalBinary(data []byte) error {
+	r := bytes.NewReader(data)
+	binary.Read(r, binary.BigEndian, &t.InfoType)
+	switch t.InfoType {
+	case InfoTypeTrackPositionMs:
+		t.InfoData = &InfoTrackPositionMs{}
+	case InfoTypeTrackIndex:
+		t.InfoData = &InfoTrackIndex{}
+	case InfoTypeChapterIndex:
+		t.InfoData = &InfoChapterIndex{}
+	case InfoTypePlayStatus:
+		t.InfoData = &InfoPlayStatus{}
+	case InfoTypeVolume:
+		t.InfoData = &InfoVolume{}
+	case InfoTypePower:
+		t.InfoData = &InfoPower{}
+	case InfoTypeEqualizer:
+		t.InfoData = &InfoEqualizer{}
+	case InfoTypeShuffle:
+		t.InfoData = &InfoShuffle{}
+	case InfoTypeRepeat:
+		t.InfoData = &InfoRepeat{}
+	case InfoTypeDateTime:
+		t.InfoData = &InfoDateTime{}
+	case InfoTypeBacklight:
+		t.InfoData = &InfoBacklight{}
+	case InfoTypeHoldSwitch:
+		t.InfoData = &InfoHoldSwitch{}
+	case InfoTypeSoundCheck:
+		t.InfoData = &InfoSoundCheck{}
+	case InfoTypeAudiobookSpeed:
+		t.InfoData = &InfoAudiobookSpeed{}
+	case InfoTypeTrackPositionSec:
+		t.InfoData = &InfoTrackPositionSec{}
+	case InfoTypeVolume2:
+		t.InfoData = &InfoVolume2{}
+	default:
+		return errors.New("unknown info type")
+	}
+	return binary.Read(r, binary.BigEndian, &t.InfoData)
+}
+
 type SetiPodStateInfo struct {
 	InfoType byte
 	InfoData byte // todo
