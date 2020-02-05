@@ -53,7 +53,7 @@ func HandleDispRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceDispRe
 			t.InfoData = &InfoTrackIndex{TrackIndex: 1}
 		case InfoTypeChapterIndex:
 			t.InfoData = &InfoChapterIndex{
-				TrackIndex:   1,
+				TrackIndex:   0,
 				ChapterCount: 0,
 				ChapterIndex: 0,
 			}
@@ -113,11 +113,57 @@ func HandleDispRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceDispRe
 	case *SetCurrentPlayingTrack:
 		ipod.Respond(req, tr, ackSuccess(req))
 	case *GetIndexedPlayingTrackInfo:
-		// RetIndexedPlayingTrackInfo:
-		ipod.Respond(req, tr, &RetIndexedPlayingTrackInfo{
+		t := &RetIndexedPlayingTrackInfo{
 			InfoType: msg.InfoType,
-			InfoData: 0x00, //todo
-		})
+		}
+
+		switch msg.InfoType {
+		case TrackInfoTypeCaps:
+			t.InfoData = &TrackInfoCaps{
+				Caps:         0x00,
+				TrackTotalMs: 300000,
+				ChapterCount: 0,
+			}
+		case TrackInfoTypeChapterTimeName:
+			t.InfoData = &TrackInfoChapterTimeName{
+				ChapterTime: 0,
+				ChapterName: ipod.StringToBytes(""),
+			}
+		case TrackInfoTypeArtist:
+			t.InfoData = &TrackInfoArtist{
+				Name: ipod.StringToBytes(""),
+			}
+		case TrackInfoTypeAlbum:
+			t.InfoData = &TrackInfoAlbum{
+				Name: ipod.StringToBytes(""),
+			}
+		case TrackInfoTypeGenre:
+			t.InfoData = &TrackInfoGenre{
+				Name: ipod.StringToBytes(""),
+			}
+		case TrackInfoTypeTrack:
+			t.InfoData = &TrackInfoTrack{
+				Title: ipod.StringToBytes("track"),
+			}
+		case TrackInfoTypeComposer:
+			t.InfoData = &TrackInfoComposer{
+				Name: ipod.StringToBytes(""),
+			}
+		case TrackInfoTypeLyrics:
+			t.InfoData = &TrackInfoLyrics{
+				Flags:       0x00,
+				PacketIndex: 0,
+				Lyrics:      ipod.StringToBytes(""),
+			}
+		case TrackInfoTypeArtworkCount:
+			t.InfoData = &TrackInfoArtworkCount{
+				None: 0x08,
+			}
+		default:
+			return errors.New("unknown info type")
+		}
+
+		ipod.Respond(req, tr, t)
 	case *GetNumPlayingTracks:
 		ipod.Respond(req, tr, &RetNumPlayingTracks{
 			NumPlayTracks: 0,

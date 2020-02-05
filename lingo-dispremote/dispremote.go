@@ -243,7 +243,7 @@ func (t *RetiPodStateInfo) UnmarshalBinary(data []byte) error {
 	default:
 		return errors.New("unknown info type")
 	}
-	return binary.Read(r, binary.BigEndian, &t.InfoData)
+	return binary.Read(r, binary.BigEndian, t.InfoData)
 }
 
 type SetiPodStateInfo struct {
@@ -261,15 +261,118 @@ type RetPlayStatus struct {
 type SetCurrentPlayingTrack struct {
 	TrackIndex uint32
 }
+
+//go:generate stringer -type=TrackInfoType
+type TrackInfoType uint8
+
+const (
+	TrackInfoTypeCaps TrackInfoType = iota
+	TrackInfoTypeChapterTimeName
+	TrackInfoTypeArtist
+	TrackInfoTypeAlbum
+	TrackInfoTypeGenre
+	TrackInfoTypeTrack
+	TrackInfoTypeComposer
+	TrackInfoTypeLyrics
+	TrackInfoTypeArtworkCount
+)
+
 type GetIndexedPlayingTrackInfo struct {
-	InfoType     byte
+	InfoType     TrackInfoType
 	TrackIndex   uint32
 	ChapterIndex uint16
 }
-type RetIndexedPlayingTrackInfo struct {
-	InfoType byte
-	InfoData byte
+
+type TrackInfoCaps struct {
+	Caps         uint32
+	TrackTotalMs uint32
+	ChapterCount uint16
 }
+type TrackInfoChapterTimeName struct {
+	ChapterTime uint32
+	ChapterName []byte
+}
+type TrackInfoArtist struct {
+	Name []byte
+}
+type TrackInfoAlbum struct {
+	Name []byte
+}
+type TrackInfoGenre struct {
+	Name []byte
+}
+type TrackInfoTrack struct {
+	Title []byte
+}
+type TrackInfoComposer struct {
+	Name []byte
+}
+type TrackInfoLyrics struct {
+	Flags       uint8
+	PacketIndex uint16
+	Lyrics      []byte
+}
+type TrackInfoArtworkCount struct {
+	None byte // empty = 0x08
+}
+
+type RetIndexedPlayingTrackInfo struct {
+	InfoType TrackInfoType
+	InfoData interface{}
+}
+
+func (t *RetIndexedPlayingTrackInfo) MarshalBinary() ([]byte, error) {
+	buf := bytes.Buffer{}
+	binary.Write(&buf, binary.BigEndian, t.InfoType)
+	binary.Write(&buf, binary.BigEndian, t.InfoData)
+	return buf.Bytes(), nil
+}
+
+func (t *RetIndexedPlayingTrackInfo) UnmarshalBinary(data []byte) error {
+	r := bytes.NewReader(data)
+	binary.Read(r, binary.BigEndian, &t.InfoType)
+	switch t.InfoType {
+	case TrackInfoTypeCaps:
+		t.InfoData = &TrackInfoCaps{}
+	case TrackInfoTypeChapterTimeName:
+		t.InfoData = &TrackInfoChapterTimeName{
+			ChapterTime: 0,
+			ChapterName: make([]byte, 0),
+		}
+	case TrackInfoTypeArtist:
+		t.InfoData = &TrackInfoArtist{
+			Name: make([]byte, 0),
+		}
+	case TrackInfoTypeAlbum:
+		t.InfoData = &TrackInfoAlbum{
+			Name: make([]byte, 0),
+		}
+	case TrackInfoTypeGenre:
+		t.InfoData = &TrackInfoGenre{
+			Name: make([]byte, 0),
+		}
+	case TrackInfoTypeTrack:
+		t.InfoData = &TrackInfoTrack{
+			Title: make([]byte, 0),
+		}
+	case TrackInfoTypeComposer:
+		t.InfoData = &TrackInfoComposer{
+			Name: make([]byte, 0),
+		}
+	case TrackInfoTypeLyrics:
+		t.InfoData = &TrackInfoLyrics{
+			Flags:       0x00,
+			PacketIndex: 0,
+			Lyrics:      make([]byte, 0),
+		}
+	case TrackInfoTypeArtworkCount:
+		t.InfoData = &TrackInfoArtworkCount{}
+	default:
+		return errors.New("unknown info type")
+	}
+	return binary.Read(r, binary.BigEndian, t.InfoData)
+}
+
 type GetNumPlayingTracks struct {
 }
 type RetNumPlayingTracks struct {
