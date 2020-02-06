@@ -34,8 +34,9 @@ func NewCRC8() CRC8 {
 }
 
 func Checksum(p []byte) uint8 {
-	crc := NewCRC8()
-	crc.Write(p)
-	return crc.Sum8()
-
+	var crc byte
+	for _, v := range p {
+		crc += v
+	}
+	return -crc
 }

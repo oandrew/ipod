@@ -24,10 +24,9 @@ func TestPacketWriter_WritePacket(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			buf := bytes.Buffer{}
-			w := ipod.NewPacketWriter(&buf)
+			w := ipod.NewPacketWriter()
 			err := w.WritePacket(tt.data)
-			got := buf.Bytes()
+			got := w.Bytes()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("PacketWriter.WritePacket() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -59,7 +58,7 @@ func TestPacketReader_ReadPacket(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := ipod.NewPacketReader(bytes.NewReader(tt.data))
+			r := ipod.NewPacketReader(tt.data)
 			got, err := r.ReadPacket()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("PacketReader.ReadPacket() error = %v, wantErr %v", err, tt.wantErr)
@@ -83,7 +82,7 @@ func BenchmarkPacketReader(b *testing.B) {
 	}
 
 	for i := 0; i < b.N; i++ {
-		r := ipod.NewPacketReader(bytes.NewReader(frame))
+		r := ipod.NewPacketReader(frame)
 		r.ReadPacket()
 	}
 }
@@ -97,8 +96,7 @@ func BenchmarkPacketWriter(b *testing.B) {
 		0x00, 0x00, 0xac, 0x44, 0x00, 0x00, 0xbb, 0x80,
 	}
 	for i := 0; i < b.N; i++ {
-		frame := bytes.Buffer{}
-		pw := ipod.NewPacketWriter(&frame)
+		pw := ipod.NewPacketWriter()
 		pw.WritePacket(packet)
 	}
 }

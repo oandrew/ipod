@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -319,8 +318,6 @@ func logCmd(cmd *ipod.Command, err error, msg string) {
 }
 
 func processFrames(frameTransport ipod.FrameReadWriter) {
-	outFrameBuf := bytes.Buffer{}
-	outFrameBuf.Grow(1024)
 	for {
 		inFrame, err := frameTransport.ReadFrame()
 		if err == io.EOF {
@@ -331,7 +328,7 @@ func processFrames(frameTransport ipod.FrameReadWriter) {
 			continue
 		}
 
-		packetReader := ipod.NewPacketReader(bytes.NewReader(inFrame))
+		packetReader := ipod.NewPacketReader(inFrame)
 		inCmdBuf := ipod.CmdBuffer{}
 		for {
 			inPacket, err := packetReader.ReadPacket()
@@ -362,10 +359,9 @@ func processFrames(frameTransport ipod.FrameReadWriter) {
 			outPacket, err := outCmd.MarshalBinary()
 			logPacket(outPacket, err, ">> PACKET")
 
-			outFrameBuf.Reset()
-			packetWriter := ipod.NewPacketWriter(&outFrameBuf)
+			packetWriter := ipod.NewPacketWriter()
 			packetWriter.WritePacket(outPacket)
-			outFrame := outFrameBuf.Bytes()
+			outFrame := packetWriter.Bytes()
 			outFrameErr := frameTransport.WriteFrame(outFrame)
 			logFrame(outFrame, outFrameErr, ">> FRAME")
 		}
@@ -439,7 +435,7 @@ func dumpTrace(tr *trace.Reader) {
 			continue
 		}
 
-		packetReader := ipod.NewPacketReader(bytes.NewReader(frame))
+		packetReader := ipod.NewPacketReader(frame)
 		for {
 			packet, err := packetReader.ReadPacket()
 			if err == io.EOF {
