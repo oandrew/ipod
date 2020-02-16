@@ -3,7 +3,6 @@ package audio
 import (
 	"bytes"
 	"encoding/binary"
-	"io"
 
 	"github.com/oandrew/ipod"
 )
@@ -44,24 +43,12 @@ type RetAccSampleRateCaps struct {
 }
 
 func (s *RetAccSampleRateCaps) UnmarshalBinary(data []byte) error {
-	r := bytes.NewReader(data)
-
-	for {
-		var rate uint32
-		if err := binary.Read(r, binary.BigEndian, &rate); err != nil {
-			if err == io.EOF {
-				break
-			} else {
-				return err
-			}
-		}
-		s.SampleRates = append(s.SampleRates, rate)
-	}
-	return nil
+	s.SampleRates = make([]uint32, len(data)/4)
+	return binary.Read(bytes.NewReader(data), binary.BigEndian, s.SampleRates)
 }
 
 func (s *RetAccSampleRateCaps) MarshalBinary() ([]byte, error) {
-	buf := bytes.Buffer{}
+	var buf bytes.Buffer
 	err := binary.Write(&buf, binary.BigEndian, s.SampleRates)
 	return buf.Bytes(), err
 }

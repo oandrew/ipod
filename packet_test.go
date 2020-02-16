@@ -31,7 +31,7 @@ func TestPacketWriter_WritePacket(t *testing.T) {
 				t.Errorf("PacketWriter.WritePacket() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual([]byte(got), tt.want) {
+			if !bytes.Equal(got, tt.want) {
 				t.Errorf("PacketWriter.WritePacket() = %v, want %v", got, tt.want)
 			}
 		})
@@ -55,6 +55,7 @@ func TestPacketReader_ReadPacket(t *testing.T) {
 		{"large-with-data", append([]byte{0x55, 0x00, 0x01, 0x01, 0x1, 0x02}, append(largeData, 0xe9)...), append([]byte{0x1, 0x02}, largeData...), false},
 		{"large-with-data-short", append([]byte{0x55, 0x00, 0x01, 0x02, 0x1, 0x02}, append(largeData, 0xe9)...), nil, true},
 		{"large-bad-crc", append([]byte{0x55, 0x00, 0x01, 0x01, 0x1, 0x02}, append(largeData, 0x22)...), nil, true},
+		{"short-packet", []byte{0x55}, nil, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -68,6 +69,30 @@ func TestPacketReader_ReadPacket(t *testing.T) {
 				t.Errorf("PacketReader.ReadPacket() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestPacketRoundtrip(t *testing.T) {
+	pw := [][]byte{
+		[]byte("packet1"),
+		[]byte("_packet2"),
+	}
+
+	w := ipod.NewPacketWriter()
+	for i := range pw {
+		w.WritePacket(pw[i])
+	}
+
+	r := ipod.NewPacketReader(w.Bytes())
+
+	for i := range pw {
+		pr, err := r.ReadPacket()
+		if err != nil {
+			t.Error(err)
+		}
+		if !bytes.Equal(pr, pw[i]) {
+			t.Fail()
+		}
 	}
 }
 

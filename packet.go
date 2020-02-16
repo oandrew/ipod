@@ -20,48 +20,46 @@ const (
 )
 
 type PacketReader struct {
-	//r *bufio.Reader
-	//r io.Reader
 	frame []byte
 }
 
 func NewPacketReader(frame []byte) *PacketReader {
 	return &PacketReader{
-		//r: bufio.NewReaderSize(r, 512),
-		//r: r,
 		frame: frame,
 	}
 }
 
-func parseHeader(data []byte) (payloadOffset, payloadLen int) {
+func parseHeader(data []byte) (payOff, payLen int, err error) {
+	if len(data) < 3 {
+		err = io.ErrUnexpectedEOF
+		return
+	}
 	if data[0] == 0x00 {
-		payloadOffset = 3
-		payloadLen = int(binary.BigEndian.Uint16(data[1:3]))
+		payOff = 3
+		payLen = int(binary.BigEndian.Uint16(data[1:3]))
 	} else {
-		payloadOffset = 1
-		payloadLen = int(data[0])
+		payOff = 1
+		payLen = int(data[0])
 	}
 	return
 }
 
-//func parse(data []byte) (pkt, payload []byte, err error) {
+func parsePacket(data []byte) (int, []byte, error) {
+	payOff, payLen, err := parseHeader(data)
+	if err != nil {
+		return 0, nil, err
+	}
+	pktLen := payOff + payLen + 1
+	pkt := data[:pktLen]
+	if len(pkt) < pktLen {
+		return pktLen, nil, io.ErrUnexpectedEOF
+	}
+	if Checksum(pkt) != 0x00 {
+		return pktLen, nil, errors.New("invalid checksum")
+	}
 
-// if data[0] == 0x00 {
-// 	payloadLen := binary.BigEndian.Uint16(data[1:3])
-// 	pkt = data[:3+payloadLen+1]
-// 	payload = data[3 : 3+payloadLen]
-// 	if len(payload) != int(payloadLen) {
-// 		err = io.ErrUnexpectedEOF
-// 	}
-// } else {
-// 	payloadLen := data[0]
-// 	pkt = data[:1+payloadLen+1]
-// 	payload = data[1 : 1+payloadLen]
-// 	if len(payload) != int(payloadLen) {
-// 		err = io.ErrUnexpectedEOF
-// 	}
-// }
-//}
+	return pktLen, pkt[payOff : payOff+payLen], nil
+}
 
 func (pd *PacketReader) ReadPacket() ([]byte, error) {
 	next := bytes.IndexByte(pd.frame, PacketStartByte)
@@ -69,29 +67,21 @@ func (pd *PacketReader) ReadPacket() ([]byte, error) {
 		return nil, io.EOF
 	}
 	pd.frame = pd.frame[next+1:]
-	payOff, payLen := parseHeader(pd.frame)
-	pktLen := payOff + payLen + 1
-	pkt := pd.frame[:pktLen]
-	if len(pd.frame) < pktLen {
-		return nil, io.ErrUnexpectedEOF
+	pktLen, payload, err := parsePacket(pd.frame)
+	if err != nil {
+		return nil, err
 	}
 	pd.frame = pd.frame[pktLen:]
-
-	if Checksum(pkt) != 0x00 {
-		return nil, errors.New("invalid checksum")
-	}
-
-	return pkt[payOff : payOff+payLen], nil
+	return payload, nil
 }
 
 type PacketWriter struct {
-	//w io.Writer
 	frame []byte
 }
 
 func NewPacketWriter() *PacketWriter {
 	return &PacketWriter{
-		//w: w,
+		frame: make([]byte, 0, 512),
 	}
 }
 
