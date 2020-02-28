@@ -22,8 +22,8 @@ func HandleExtRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceExtRemo
 
 	case *GetCurrentPlayingTrackChapterInfo:
 		ipod.Respond(req, tr, &ReturnCurrentPlayingTrackChapterInfo{
-			CurrentChapterIndex: -1,
-			ChapterCount:        0,
+			CurrentChapterIndex: 0,
+			ChapterCount:        1,
 		})
 	case *SetCurrentPlayingTrackChapter:
 		ipod.Respond(req, tr, ackSuccess(req))
@@ -49,7 +49,7 @@ func HandleExtRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceExtRemo
 			info = &TrackCaps{
 				Caps:         0x0,
 				TrackLength:  300 * 1000,
-				ChapterCount: 0,
+				ChapterCount: 1,
 			}
 		case TrackInfoDescription, TrackInfoLyrics:
 			info = &TrackLongText{
@@ -136,7 +136,7 @@ func HandleExtRemote(req *ipod.Command, tr ipod.CommandWriter, dev DeviceExtRemo
 		})
 	case *GetNumPlayingTracks:
 		ipod.Respond(req, tr, &ReturnNumPlayingTracks{
-			NumTracks: 0,
+			NumTracks: 1,
 		})
 	case *SetCurrentPlayingTrack:
 	case *SelectSortDBRecord:
