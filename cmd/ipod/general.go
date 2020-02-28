@@ -6,7 +6,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 
-	"github.com/oandrew/ipod/lingo-general"
+	general "github.com/oandrew/ipod/lingo-general"
 
 	"github.com/fullsailor/pkcs7"
 )
@@ -40,10 +40,16 @@ func (d *DevGeneral) SerialNum() string {
 
 func (d *DevGeneral) LingoProtocolVersion(lingo uint8) (major uint8, minor uint8) {
 	switch lingo {
+	case 0x00:
+		return 1, 9
+	case 0x03:
+		return 1, 5
+	case 0x04:
+		return 1, 12
 	case 0x0a:
-		return 1, 3
+		return 1, 2
 	default:
-		return 1, 0
+		return 1, 1
 	}
 }
 
