@@ -479,11 +479,6 @@ type FIDiPodPreferenceToken struct {
 	RestoreOnExit    byte
 }
 
-func (t *FIDiPodPreferenceToken) UnmarshalBinary(data []byte) error {
-	r := bytes.NewReader(data)
-	return binary.Read(r, binary.BigEndian, t)
-}
-
 type FIDEAProtocolToken struct {
 	ProtocolIndex  byte
 	ProtocolString []byte
@@ -499,11 +494,6 @@ type FIDBundleSeedIDPrefToken struct {
 	BundleSeedIDString [11]byte
 }
 
-func (t *FIDBundleSeedIDPrefToken) UnmarshalBinary(data []byte) error {
-	copy(t.BundleSeedIDString[:], data)
-	return nil
-}
-
 type FIDScreenInfoToken struct {
 	ScreenWidthInches  uint16
 	ScreenHeightInches uint16
@@ -517,138 +507,222 @@ type FIDScreenInfoToken struct {
 	ScreenGammaValue   byte
 }
 
-func (t *FIDScreenInfoToken) UnmarshalBinary(data []byte) error {
-	r := bytes.NewReader(data)
-	return binary.Read(r, binary.BigEndian, t)
-}
-
 type FIDEAProtocolMetadataToken struct {
 	ProtocolIndex byte
 	MetadataType  byte
-}
-
-func (t *FIDEAProtocolMetadataToken) UnmarshalBinary(data []byte) error {
-	t.ProtocolIndex = data[0]
-	t.MetadataType = data[1]
-	return nil
 }
 
 type FIDMicrophoneCapsToken struct {
 	MicCapsBitmask uint32
 }
 
-func (t *FIDMicrophoneCapsToken) UnmarshalBinary(data []byte) error {
-	r := bytes.NewReader(data)
-	return binary.Read(r, binary.BigEndian, t)
+type TokenID struct {
+	FIDType    byte
+	FIDSubtype byte
 }
 
 type FIDTokenValue struct {
-	Len        byte
-	FIDType    byte
-	FIDSubtype byte
-	Token      interface{}
+	ID    TokenID
+	Token interface{}
+}
+
+func (v *FIDTokenValue) MarshalBinary() ([]byte, error) {
+	var buf bytes.Buffer
+	if err := binary.Write(&buf, binary.BigEndian, v.ID); err != nil {
+		return nil, err
+	}
+
+	if bu, ok := v.Token.(encoding.BinaryMarshaler); ok {
+		b, err := bu.MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+		buf.Write(b)
+	} else if binary.Size(v.Token) != -1 {
+		if err := binary.Write(&buf, binary.BigEndian, v.Token); err != nil {
+			return nil, err
+		}
+	} else if b, ok := v.Token.([]byte); ok {
+		buf.Write(b)
+	} else {
+		return nil, errors.New("unknown token")
+	}
+	return buf.Bytes(), nil
+}
+
+func (v *FIDTokenValue) UnmarshalBinary(data []byte) error {
+	br := bytes.NewBuffer(data)
+	if err := binary.Read(br, binary.BigEndian, &v.ID); err != nil {
+		return err
+	}
+
+	switch v.ID.FIDType {
+	case 0x00:
+		switch v.ID.FIDSubtype {
+		case 0x00:
+			//identify
+			v.Token = &FIDIdentifyToken{}
+		case 0x01:
+			//acc caps
+			v.Token = &FIDAccCapsToken{}
+		case 0x02:
+			//accinfo
+			v.Token = &FIDAccInfoToken{}
+		case 0x03:
+			//ipod pref
+			v.Token = &FIDiPodPreferenceToken{}
+		case 0x04:
+			//sdk proto
+			v.Token = &FIDEAProtocolToken{}
+		case 0x05:
+			// bundleseed
+			v.Token = &FIDBundleSeedIDPrefToken{}
+		case 0x07:
+			// screen info
+			v.Token = &FIDScreenInfoToken{}
+		case 0x08:
+			// eaprotometadata
+			v.Token = &FIDEAProtocolMetadataToken{}
+
+		}
+	case 0x01:
+		//mic
+		v.Token = &FIDMicrophoneCapsToken{}
+	}
+
+	if bu, ok := v.Token.(encoding.BinaryUnmarshaler); ok {
+		if err := bu.UnmarshalBinary(br.Bytes()); err != nil {
+			return err
+		}
+	} else if binary.Size(v.Token) != -1 {
+		return binary.Read(br, binary.BigEndian, v.Token)
+	} else {
+		p := make([]byte, br.Len())
+		copy(p, br.Bytes())
+		v.Token = p
+	}
+	return nil
 }
 
 type SetFIDTokenValues struct {
-	NumFIDTokenValues byte
-	FIDTokenValues    []FIDTokenValue
+	FIDTokenValues []FIDTokenValue
+}
+
+func (s *SetFIDTokenValues) MarshalBinary() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(len(s.FIDTokenValues)))
+
+	for i := range s.FIDTokenValues {
+		tokenBytes, err := s.FIDTokenValues[i].MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+		buf.WriteByte(byte(len(tokenBytes)))
+		buf.Write(tokenBytes)
+	}
+	return buf.Bytes(), nil
 }
 
 func (s *SetFIDTokenValues) UnmarshalBinary(data []byte) error {
-	br := bytes.NewReader(data)
-	var err error
-	s.NumFIDTokenValues, err = br.ReadByte()
+	br := bytes.NewBuffer(data)
+	tokenCount, err := br.ReadByte()
 	if err != nil {
 		return err
 	}
-	s.FIDTokenValues = make([]FIDTokenValue, s.NumFIDTokenValues)
+	s.FIDTokenValues = make([]FIDTokenValue, tokenCount)
 	for i := range s.FIDTokenValues {
 
-		v := &s.FIDTokenValues[i]
-
-		v.Len, err = br.ReadByte()
+		tokenLen, err := br.ReadByte()
 		if err != nil {
 			return err
 		}
-		v.FIDType, err = br.ReadByte()
-		if err != nil {
+		tokenValue := &s.FIDTokenValues[i]
+		tokenBytes := br.Next(int(tokenLen))
+		if err := tokenValue.UnmarshalBinary(tokenBytes); err != nil {
 			return err
 		}
-		v.FIDSubtype, err = br.ReadByte()
-		if err != nil {
-			return err
-		}
-		data := make([]byte, v.Len-2)
-		_, err = br.Read(data)
-		if err != nil {
-			return err
-		}
-
-		switch v.FIDType {
-		case 0x00:
-			switch v.FIDSubtype {
-			case 0x00:
-				//identify
-				v.Token = &FIDIdentifyToken{}
-			case 0x01:
-				//acc caps
-				v.Token = &FIDAccCapsToken{}
-			case 0x02:
-				//accinfo
-				v.Token = &FIDAccInfoToken{}
-			case 0x03:
-				//ipod pref
-				v.Token = &FIDiPodPreferenceToken{}
-			case 0x04:
-				//sdk proto
-				v.Token = &FIDEAProtocolToken{}
-			case 0x05:
-				// bundleseed
-				v.Token = &FIDBundleSeedIDPrefToken{}
-			case 0x07:
-				// screen info
-				v.Token = &FIDScreenInfoToken{}
-			case 0x08:
-				// eaprotometadata
-				v.Token = &FIDEAProtocolMetadataToken{}
-
-			}
-		case 0x01:
-			//mic
-			v.Token = &FIDMicrophoneCapsToken{}
-		}
-
-		if bu, ok := v.Token.(encoding.BinaryUnmarshaler); ok {
-			if err := bu.UnmarshalBinary(data); err != nil {
-				return err
-			}
-		} else {
-			v.Token = data
-		}
-
 	}
 	return nil
+}
 
+type FIDTokenValueACK struct {
+	ID  TokenID
+	ACK interface{}
+}
+
+func (v *FIDTokenValueACK) MarshalBinary() ([]byte, error) {
+	var buf bytes.Buffer
+	if err := binary.Write(&buf, binary.BigEndian, v.ID); err != nil {
+		return nil, err
+	}
+
+	if bu, ok := v.ACK.(encoding.BinaryMarshaler); ok {
+		b, err := bu.MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+		buf.Write(b)
+	} else if binary.Size(v.ACK) != -1 {
+		if err := binary.Write(&buf, binary.BigEndian, v.ACK); err != nil {
+			return nil, err
+		}
+	} else if b, ok := v.ACK.([]byte); ok {
+		buf.Write(b)
+	} else {
+		return nil, errors.New("unknown ack")
+	}
+	return buf.Bytes(), nil
+}
+
+func (v *FIDTokenValueACK) UnmarshalBinary(data []byte) error {
+	br := bytes.NewBuffer(data)
+	if err := binary.Read(br, binary.BigEndian, &v.ID); err != nil {
+		return err
+	}
+
+	p := make([]byte, br.Len())
+	copy(p, br.Bytes())
+	v.ACK = p
+
+	return nil
 }
 
 type RetFIDTokenValueACKs struct {
-	NumFIDTokenValueACKs byte
-	FIDTokenValueACKs    []byte
+	FIDTokenValueACKs []FIDTokenValueACK
 }
 
 func (s RetFIDTokenValueACKs) MarshalBinary() ([]byte, error) {
-	return append([]byte{s.NumFIDTokenValueACKs}, s.FIDTokenValueACKs...), nil
+	var buf bytes.Buffer
+	buf.WriteByte(byte(len(s.FIDTokenValueACKs)))
 
+	for i := range s.FIDTokenValueACKs {
+		ackBytes, err := s.FIDTokenValueACKs[i].MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+		buf.WriteByte(byte(len(ackBytes)))
+		buf.Write(ackBytes)
+	}
+	return buf.Bytes(), nil
 }
 
 func (s *RetFIDTokenValueACKs) UnmarshalBinary(data []byte) error {
-	if len(data) < 2 {
-		return errors.New("RetFIDTokenValueACKs: short payload")
+	br := bytes.NewBuffer(data)
+	ackCount, err := br.ReadByte()
+	if err != nil {
+		return err
 	}
-	s.NumFIDTokenValueACKs = data[0]
-	if len(data) > 1 {
-		s.FIDTokenValueACKs = make([]byte, len(data[1:]))
-		copy(s.FIDTokenValueACKs, data[1:])
+	s.FIDTokenValueACKs = make([]FIDTokenValueACK, ackCount)
+	for i := range s.FIDTokenValueACKs {
+		ackLen, err := br.ReadByte()
+		if err != nil {
+			return err
+		}
+		ackValue := &s.FIDTokenValueACKs[i]
+		ackBytes := br.Next(int(ackLen))
+		if err := ackValue.UnmarshalBinary(ackBytes); err != nil {
+			return err
+		}
 	}
 	return nil
 }

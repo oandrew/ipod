@@ -45,42 +45,47 @@ func ack(req *ipod.Command, status ACKStatus) *ACK {
 	return &ACK{Status: status, CmdID: uint8(req.ID.CmdID())}
 }
 
-func ackFIDTokens(tokens *SetFIDTokenValues) *RetFIDTokenValueACKs {
-	resp := &RetFIDTokenValueACKs{NumFIDTokenValueACKs: tokens.NumFIDTokenValues}
-	buf := bytes.Buffer{}
-	for _, token := range tokens.FIDTokenValues {
-
-		//after subtype
-		ackBuf := bytes.Buffer{}
-		ackBuf.Write([]byte{token.FIDType, token.FIDSubtype})
-
-		switch t := token.Token.(type) {
+func ackFIDTokenValue(tokenValue FIDTokenValue) FIDTokenValueACK {
+	ackToken := func(token interface{}) interface{} {
+		switch t := token.(type) {
 		case *FIDIdentifyToken:
-			ackBuf.Write([]byte{0x00})
+			return []byte{0x00}
 		case *FIDAccCapsToken:
-			ackBuf.Write([]byte{0x00})
+			return []byte{0x00}
 		case *FIDAccInfoToken:
-			ackBuf.Write([]byte{0x00, t.AccInfoType})
+			return []byte{0x00, t.AccInfoType}
 		case *FIDiPodPreferenceToken:
-			ackBuf.Write([]byte{0x00, t.PrefClass})
+			return []byte{0x00, t.PrefClass}
 		case *FIDEAProtocolToken:
-			ackBuf.Write([]byte{0x00, t.ProtocolIndex})
+			return []byte{0x00, t.ProtocolIndex}
 		case *FIDBundleSeedIDPrefToken:
-			ackBuf.Write([]byte{0x00})
+			return []byte{0x00}
 		case *FIDScreenInfoToken:
-			ackBuf.Write([]byte{0x00})
+			return []byte{0x00}
 		case *FIDEAProtocolMetadataToken:
-			ackBuf.Write([]byte{0x00})
-
+			return []byte{0x00}
 		case *FIDMicrophoneCapsToken:
-			ackBuf.Write([]byte{0x00})
+			return []byte{0x00}
+		default:
+			return nil
 		}
-		buf.WriteByte(byte(ackBuf.Len()))
-		buf.ReadFrom(&ackBuf)
 
 	}
-	resp.FIDTokenValueACKs = buf.Bytes()
-	return resp
+
+	return FIDTokenValueACK{
+		ID:  tokenValue.ID,
+		ACK: ackToken(tokenValue.Token),
+	}
+}
+
+func ackFIDTokenValues(tokens *SetFIDTokenValues) *RetFIDTokenValueACKs {
+	acks := make([]FIDTokenValueACK, len(tokens.FIDTokenValues))
+	for i := range tokens.FIDTokenValues {
+		acks[i] = ackFIDTokenValue(tokens.FIDTokenValues[i])
+	}
+	return &RetFIDTokenValueACKs{
+		FIDTokenValueACKs: acks,
+	}
 }
 
 var accCertBuf bytes.Buffer
@@ -200,7 +205,7 @@ func HandleGeneral(req *ipod.Command, tr ipod.CommandWriter, dev DeviceGeneral) 
 		for _, token := range msg.FIDTokenValues {
 			dev.SetToken(token)
 		}
-		ipod.Respond(req, tr, ackFIDTokens(msg))
+		ipod.Respond(req, tr, ackFIDTokenValues(msg))
 	case *EndIDPS:
 		dev.EndIDPS(msg.AccEndIDPSStatus)
 		switch msg.AccEndIDPSStatus {
