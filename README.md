@@ -15,7 +15,10 @@ New features:
 - Better codebase with message type definitions
 - Tests
 
-
+### update 03/2020
+kernel module needs to be recompiled due to a breaking change (hid descriptor).  
+This should fix the issue with hanging after `GetDevAuthenticationInfo` on some devices.  
+At least it's finally working in my own car :)
 
 # build and run
 ```
