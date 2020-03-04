@@ -36,6 +36,19 @@ type ReportDefs []ReportDef
 // DefaultReportDefs is a default set of report types
 // for use with ipod-gadget
 var DefaultReportDefs = ReportDefs{
+	ReportDef{ID: 0x01, Len: 12, Dir: ReportDirAccIn},
+	ReportDef{ID: 0x02, Len: 14, Dir: ReportDirAccIn},
+	ReportDef{ID: 0x03, Len: 20, Dir: ReportDirAccIn},
+	ReportDef{ID: 0x04, Len: 63, Dir: ReportDirAccIn},
+
+	ReportDef{ID: 0x05, Len: 8, Dir: ReportDirAccIn},
+	ReportDef{ID: 0x06, Len: 10, Dir: ReportDirAccIn},
+	ReportDef{ID: 0x07, Len: 14, Dir: ReportDirAccIn},
+	ReportDef{ID: 0x08, Len: 20, Dir: ReportDirAccIn},
+	ReportDef{ID: 0x09, Len: 63, Dir: ReportDirAccIn},
+}
+
+var LegacyReportDefs = ReportDefs{
 	ReportDef{ID: 0x01, Len: 5, Dir: ReportDirAccIn},
 	ReportDef{ID: 0x02, Len: 9, Dir: ReportDirAccIn},
 	ReportDef{ID: 0x03, Len: 13, Dir: ReportDirAccIn},

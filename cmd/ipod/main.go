@@ -14,11 +14,11 @@ import (
 
 	"github.com/oandrew/ipod"
 	"github.com/oandrew/ipod/hid"
-	"github.com/oandrew/ipod/lingo-audio"
-	"github.com/oandrew/ipod/lingo-dispremote"
-	"github.com/oandrew/ipod/lingo-extremote"
-	"github.com/oandrew/ipod/lingo-general"
-	"github.com/oandrew/ipod/lingo-simpleremote"
+	audio "github.com/oandrew/ipod/lingo-audio"
+	dispremote "github.com/oandrew/ipod/lingo-dispremote"
+	extremote "github.com/oandrew/ipod/lingo-extremote"
+	general "github.com/oandrew/ipod/lingo-general"
+	simpleremote "github.com/oandrew/ipod/lingo-simpleremote"
 	"github.com/oandrew/ipod/trace"
 )
 
@@ -52,6 +52,8 @@ type UsageError struct {
 	error
 }
 
+var hidReportDefs = hid.DefaultReportDefs
+
 func main() {
 	logOut := os.Stdout
 	log.Formatter = &TextFormatter{
@@ -76,6 +78,10 @@ func main() {
 			Name:  "debug, d",
 			Usage: "verbose logging",
 		},
+		cli.BoolFlag{
+			Name:  "legacy, l",
+			Usage: "use legacy hid descriptor",
+		},
 	}
 
 	app.ExitErrHandler = func(c *cli.Context, err error) {
@@ -93,6 +99,10 @@ func main() {
 	app.Before = func(c *cli.Context) error {
 		if c.GlobalBool("debug") {
 			log.SetLevel(logrus.DebugLevel)
+		}
+
+		if c.GlobalBool("legacy") {
+			hidReportDefs = hid.LegacyReportDefs
 		}
 
 		return nil
@@ -145,7 +155,7 @@ func main() {
 				}
 
 				reportR, reportW := hid.NewReportReader(rw), hid.NewReportWriter(rw)
-				frameTransport := hid.NewTransport(reportR, reportW, hid.DefaultReportDefs)
+				frameTransport := hid.NewTransport(reportR, reportW, hidReportDefs)
 				processFrames(frameTransport)
 				return nil
 			},
@@ -171,7 +181,7 @@ func main() {
 				tr := trace.NewReader(f)
 				tdr := trace.NewTraceDirReader(tr, trace.DirIn)
 				reportR, reportW := hid.NewReportReader(tdr), hid.NewReportWriter(ioutil.Discard)
-				frameTransport := hid.NewTransport(reportR, reportW, hid.DefaultReportDefs)
+				frameTransport := hid.NewTransport(reportR, reportW, hidReportDefs)
 				processFrames(frameTransport)
 				return nil
 			},
@@ -250,7 +260,7 @@ func main() {
 				dummyW := hid.NewReportWriter(ioutil.Discard)
 				traceR := hid.NewReportReader(tdr)
 
-				frameTransport := hid.NewTransport(reportR, dummyW, hid.DefaultReportDefs)
+				frameTransport := hid.NewTransport(reportR, dummyW, hidReportDefs)
 
 				go processFrames(frameTransport)
 
@@ -424,7 +434,7 @@ func dumpTrace(tr *trace.Reader) {
 		}
 		dir := head.Dir
 		tdr := trace.NewQueueDirReader(&q, dir)
-		d := hid.NewDecoderDefault(hid.NewReportReader(tdr))
+		d := hid.NewDecoder(hid.NewReportReader(tdr), hidReportDefs)
 
 		frame, err := d.ReadFrame()
 		if err == io.EOF {
