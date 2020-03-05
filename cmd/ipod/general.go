@@ -31,7 +31,7 @@ func (d *DevGeneral) Name() string {
 }
 
 func (d *DevGeneral) SoftwareVersion() (major uint8, minor uint8, rev uint8) {
-	return 1, 1, 1
+	return 7, 1, 2
 }
 
 func (d *DevGeneral) SerialNum() string {
