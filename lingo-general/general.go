@@ -98,6 +98,7 @@ type ACKStatus uint8
 
 const (
 	ACKStatusSuccess  ACKStatus = 0x00
+	ACKStatusFailed   ACKStatus = 0x02
 	ACKStatusUnkownID ACKStatus = 0x05
 	ACKStatusPending  ACKStatus = 0x06
 )
@@ -817,9 +818,20 @@ type SetAvailableCurrent struct {
 	CurrentLimit uint16
 }
 type RequestApplicationLaunch struct {
-	_     [3]byte
-	AppID []byte
+	Reserved0 byte
+	Reserved1 byte
+	Reserved2 byte
+	AppID     []byte
 }
+
+func (s *RequestApplicationLaunch) UnmarshalBinary(data []byte) error {
+	s.Reserved0 = data[0]
+	s.Reserved1 = data[1]
+	s.Reserved2 = data[2]
+	s.AppID = append([]byte(nil), data[3:]...)
+	return nil
+}
+
 type GetNowPlayingFocusApp struct{}
 
 type RetNowPlayingFocusApp struct {

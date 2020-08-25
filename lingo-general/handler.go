@@ -254,7 +254,7 @@ func HandleGeneral(req *ipod.Command, tr ipod.CommandWriter, dev DeviceGeneral) 
 		// notify acc
 
 	case *RequestApplicationLaunch:
-		ipod.Respond(req, tr, ackSuccess(req))
+		ipod.Respond(req, tr, ack(req, ACKStatusFailed))
 
 	case *GetNowPlayingFocusApp:
 		ipod.Respond(req, tr, &RetNowPlayingFocusApp{AppID: ipod.StringToBytes("")})
