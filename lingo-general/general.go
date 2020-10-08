@@ -214,13 +214,13 @@ func (s *RetDevAuthenticationInfo) UnmarshalBinary(r []byte) error {
 	s.Major, s.Minor = r[0], r[1]
 
 	if s.Major >= 0x02 {
-		if len(r) < 5 {
+		if len(r) < 4 {
 			return errors.New("short packet")
 		}
 		s.CertCurrentSection, s.CertMaxSection = r[2], r[3]
-
-		s.CertData = make([]byte, len(r[4:]))
-		copy(s.CertData, r[4:])
+		data := r[4:]
+		s.CertData = make([]byte, len(data))
+		copy(s.CertData, data)
 	}
 
 	return nil
