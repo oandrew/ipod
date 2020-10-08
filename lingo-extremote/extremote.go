@@ -9,10 +9,8 @@ import (
 )
 
 func init() {
-	ipod.RegisterLingos(LingoExtRemotelID, Lingos)
+	ipod.RegisterLingos(ipod.LingoExtRemoteID, Lingos)
 }
-
-const LingoExtRemotelID = 0x04
 
 var Lingos struct {
 	ACK                                        `id:"0x0001"`

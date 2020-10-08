@@ -4,6 +4,19 @@ package general
 
 import "strconv"
 
+func _() {
+	// An "invalid array index" compiler error signifies that the constant values have changed.
+	// Re-run the stringer command to generate them again.
+	var x [1]struct{}
+	_ = x[AccInfoName-1]
+	_ = x[AccInfoFirmware-4]
+	_ = x[AccInfoHardware-5]
+	_ = x[AccInfoMfr-6]
+	_ = x[AccInfoModel-7]
+	_ = x[AccInfoSerial-8]
+	_ = x[AccInfoMaxPayload-9]
+}
+
 const (
 	_AccInfoType_name_0 = "AccInfoName"
 	_AccInfoType_name_1 = "AccInfoFirmwareAccInfoHardwareAccInfoMfrAccInfoModelAccInfoSerialAccInfoMaxPayload"

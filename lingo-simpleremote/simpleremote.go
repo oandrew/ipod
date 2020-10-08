@@ -1,14 +1,17 @@
 package simpleremote
 
 import (
+	"encoding/binary"
+	"errors"
+	"math/bits"
+	"strings"
+
 	"github.com/oandrew/ipod"
 )
 
 func init() {
-	ipod.RegisterLingos(LingoSimpleRemotelID, Lingos)
+	ipod.RegisterLingos(ipod.LingoSimpleRemoteID, Lingos)
 }
-
-const LingoSimpleRemotelID = 0x02
 
 var Lingos struct {
 	ContextButtonStatus       `id:"0x00"`
@@ -34,21 +37,108 @@ var Lingos struct {
 	DevACK                    `id:"0x81"`
 }
 
+type ButtonStates struct {
+	ButtonStates uint32
+	// force binary.Size() == -1
+	_ []byte
+}
+
+func (s *ButtonStates) MarshalBinary() ([]byte, error) {
+	var mask [4]byte
+	binary.LittleEndian.PutUint32(mask[:], s.ButtonStates)
+	byteLen := (bits.Len32(s.ButtonStates) + 7) / 8
+	if byteLen == 0 {
+		byteLen = 1
+	}
+	return mask[:byteLen], nil
+}
+
+func (s *ButtonStates) UnmarshalBinary(data []byte) error {
+	var mask [4]byte
+	switch copy(mask[:], data) {
+	case 1, 2, 3, 4:
+		s.ButtonStates = binary.LittleEndian.Uint32(mask[:])
+		return nil
+	default:
+		return errors.New("invalid data")
+	}
+}
+
+//go:generate stringer -type=ContextButtonBit
+type ContextButtonBit uint32
+
+const (
+	ContextButtonVolumeUp ContextButtonBit = 1 << iota
+	ContextButtonVolumeDown
+	ContextButtonNextTrack
+	ContextButtonPreviousTrack
+	ContextButtonNextAlbum
+	ContextButtonPreviousAlbum
+	ContextButtonStop
+	ContextButtonPlayResume
+	ContextButtonPause
+	ContextButtonMuteToggle
+	ContextButtonNextChapter
+	ContextButtonPreviousChapter
+	ContextButtonNextPlaylist
+	ContextButtonPreviousPlaylist
+	ContextButtonShuffleSettingAdvance
+	ContextButtonRepeatSettingAdvance
+	ContextButtonPowerOn
+	ContextButtonPowerOff
+	ContextButtonBacklightfor30Seconds
+	ContextButtonBeginFastForward
+	ContextButtonBeginRewind
+	ContextButtonMenu
+	ContextButtonSelect
+	ContextButtonUpArrow
+	ContextButtonDownArrow
+	ContextButtonBacklightOff
+)
+
+type ContextButtonMask uint32
+
+func (m ContextButtonMask) String() string {
+	labels := make([]string, 0, 32)
+	for i := 0; i < 32; i++ {
+		bit := uint32(1 << i)
+		if uint32(m)&bit != 0 {
+			labels = append(labels, ContextButtonBit(bit).String())
+		}
+	}
+	return strings.Join(labels, " | ")
+}
+
 type ContextButtonStatus struct {
-	ButtonStates uint8 // add optional
+	State ContextButtonMask
+}
+
+func (s *ContextButtonStatus) MarshalBinary() ([]byte, error) {
+	tmp := ButtonStates{ButtonStates: uint32(s.State)}
+	return tmp.MarshalBinary()
+}
+
+func (s *ContextButtonStatus) UnmarshalBinary(data []byte) error {
+	var tmp ButtonStates
+	if err := tmp.UnmarshalBinary(data); err != nil {
+		return err
+	}
+	s.State = ContextButtonMask(tmp.ButtonStates)
+	return nil
 }
 
 type ACK struct{}
 type VideoButtonStatus struct {
-	ButtonStates uint8 // add optional
+	ButtonStates
 }
 type AudioButtonStatus struct {
-	ButtonStates uint8 // add optional
+	ButtonStates
 }
 type iPodOutButtonStatus struct {
 	ButtonSource byte
-	ButtonMask   uint8 // add optional
+	// add ButtonStates
 }
+
 type RotationInputStatus struct{}
 type RadioButtonStatus struct{}
 type CameraButtonStatus struct{}

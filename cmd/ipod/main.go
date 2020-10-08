@@ -18,7 +18,7 @@ import (
 	dispremote "github.com/oandrew/ipod/lingo-dispremote"
 	extremote "github.com/oandrew/ipod/lingo-extremote"
 	general "github.com/oandrew/ipod/lingo-general"
-	simpleremote "github.com/oandrew/ipod/lingo-simpleremote"
+	_ "github.com/oandrew/ipod/lingo-simpleremote"
 	"github.com/oandrew/ipod/trace"
 )
 
@@ -61,6 +61,8 @@ func main() {
 	}
 
 	log.Out = logOut
+
+	spew.Config.DisablePointerAddresses = true
 
 	app := cli.NewApp()
 	app.Name = "ipod"
@@ -384,22 +386,22 @@ var devGeneral = &DevGeneral{}
 
 func handlePacket(cmdWriter ipod.CommandWriter, cmd *ipod.Command) {
 	switch cmd.ID.LingoID() {
-	case general.LingoGeneralID:
+	case ipod.LingoGeneralID:
 		if auth, ok := cmd.Payload.(*general.RetDevAuthenticationInfo); ok {
-			if auth.Major >= 2 && auth.CertCurrentSection == auth.CertMaxSection || auth.Major < 2 {
+			if auth.Major >= 2 && auth.CertCurrentSection >= auth.CertMaxSection || auth.Major < 2 {
 				audio.Start(cmdWriter)
 			}
 		}
 		general.HandleGeneral(cmd, cmdWriter, devGeneral)
 
-	case simpleremote.LingoSimpleRemotelID:
+	case ipod.LingoSimpleRemoteID:
 		//todo
 		log.Warn("Lingo SimpleRemote is not supported yet")
-	case dispremote.LingoDisplayRemoteID:
+	case ipod.LingoDisplayRemoteID:
 		dispremote.HandleDispRemote(cmd, cmdWriter, nil)
-	case extremote.LingoExtRemotelID:
+	case ipod.LingoExtRemoteID:
 		extremote.HandleExtRemote(cmd, cmdWriter, nil)
-	case audio.LingoAudioID:
+	case ipod.LingoDigitalAudioID:
 		audio.HandleAudio(cmd, cmdWriter, nil)
 	}
 }

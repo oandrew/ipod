@@ -13,8 +13,8 @@ import (
 // LingoCmdID represents Lingo ID and Command ID
 type LingoCmdID uint32
 
-func (id LingoCmdID) LingoID() uint16 {
-	return uint16(id >> 16 & 0xffff)
+func (id LingoCmdID) LingoID() uint8 {
+	return uint8(id >> 16 & 0xff)
 }
 
 func (id LingoCmdID) CmdID() uint16 {
@@ -29,13 +29,9 @@ func (id LingoCmdID) String() string {
 	return fmt.Sprintf("%#02x,%#0*x", id.LingoID(), cmdIDLen(id.LingoID())*2, id.CmdID())
 }
 
-func (id LingoCmdID) len() int {
-	return 1 + cmdIDLen(id.LingoID())
-}
-
-func cmdIDLen(lingoID uint16) int {
+func cmdIDLen(lingoID uint8) int {
 	switch lingoID {
-	case 0x04:
+	case LingoExtRemoteID:
 		return 2
 	default:
 		return 1
@@ -56,13 +52,13 @@ func marshalLingoCmdID(w io.Writer, id LingoCmdID) error {
 }
 
 func unmarshalLingoCmdID(r io.Reader, id *LingoCmdID) error {
-	var lingoID byte
+	var lingoID uint8
 	err := binary.Read(r, binary.BigEndian, &lingoID)
 	if err != nil {
 		return err
 	}
 
-	switch cmdIDLen(uint16(lingoID)) {
+	switch cmdIDLen(lingoID) {
 	case 2:
 		var cmdID uint16
 		err := binary.Read(r, binary.BigEndian, &cmdID)
@@ -163,19 +159,26 @@ func Lookup(id LingoCmdID, payloadSize int) (LookupResult, bool) {
 		return LookupResult{}, false
 	}
 	for _, p := range payloads {
-		switch {
-		case p.Size() == uintptr(payloadSize):
+		v := reflect.New(p).Interface()
+		cmdSize := binarySize(v)
+		if cmdSize == -1 {
+			continue
+		}
+
+		switch cmdSize {
+		case payloadSize:
 			return LookupResult{
-				Payload:     reflect.New(p).Interface(),
+				Payload:     v,
 				Transaction: false,
 			}, true
-		case p.Size() == uintptr(payloadSize-2):
+		case payloadSize - 2:
 			return LookupResult{
-				Payload:     reflect.New(p).Interface(),
+				Payload:     v,
 				Transaction: true,
 			}, true
 		}
 	}
+	// else assume transaction=true
 	if len(payloads) == 1 {
 		return LookupResult{
 			Payload:     reflect.New(payloads[0]).Interface(),
@@ -185,3 +188,20 @@ func Lookup(id LingoCmdID, payloadSize int) (LookupResult, bool) {
 
 	return LookupResult{}, false
 }
+
+func binarySize(v interface{}) int {
+	return binary.Size(v)
+}
+
+const (
+	LingoGeneralID       = 0x00
+	LingoSimpleRemoteID  = 0x02
+	LingoDisplayRemoteID = 0x03
+	LingoExtRemoteID     = 0x04
+	LingoUSBHostID       = 0x06
+	LingoRFTunerID       = 0x07
+	LingoEqID            = 0x08
+	LingoSportsID        = 0x09
+	LingoDigitalAudioID  = 0x0A
+	LingoStorageID       = 0x0C
+)

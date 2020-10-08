@@ -8,10 +8,8 @@ import (
 )
 
 func init() {
-	ipod.RegisterLingos(LingoAudioID, Lingos)
+	ipod.RegisterLingos(ipod.LingoDigitalAudioID, Lingos)
 }
-
-const LingoAudioID = 0x0a
 
 var Lingos struct {
 	AccAck                  `id:"0x00"`

@@ -6,15 +6,14 @@ import (
 	"encoding"
 	"encoding/binary"
 	"errors"
+	"strings"
 
 	"github.com/oandrew/ipod"
 )
 
 func init() {
-	ipod.RegisterLingos(LingoGeneralID, Lingos)
+	ipod.RegisterLingos(ipod.LingoGeneralID, Lingos)
 }
-
-const LingoGeneralID = 0x00
 
 var Lingos struct {
 	RequestIdentify                `id:"0x00"`
@@ -186,8 +185,37 @@ type ReturnTransportMaxPayloadSize struct {
 	MaxPayload uint16
 }
 
+//go:generate stringer -type=LingoBit
+type LingoBit uint32
+
+const (
+	LingoGeneralBit       LingoBit = 1 << ipod.LingoGeneralID
+	LingoSimpleRemoteBit  LingoBit = 1 << ipod.LingoSimpleRemoteID
+	LingoDisplayRemoteBit LingoBit = 1 << ipod.LingoDisplayRemoteID
+	LingoExtRemoteBit     LingoBit = 1 << ipod.LingoExtRemoteID
+	LingoUSBHostBit       LingoBit = 1 << ipod.LingoUSBHostID
+	LingoRFTunerBit       LingoBit = 1 << ipod.LingoRFTunerID
+	LingoEqBit            LingoBit = 1 << ipod.LingoEqID
+	LingoSportsBit        LingoBit = 1 << ipod.LingoSportsID
+	LingoDigitalAudioBit  LingoBit = 1 << ipod.LingoDigitalAudioID
+	LingoStorageBit       LingoBit = 1 << ipod.LingoStorageID
+)
+
+type LingoMask uint32
+
+func (m *LingoMask) String() string {
+	labels := make([]string, 0, 32)
+	for i := 0; i < 32; i++ {
+		bit := uint32(1 << i)
+		if uint32(*m)&bit != 0 {
+			labels = append(labels, LingoBit(bit).String())
+		}
+	}
+	return strings.Join(labels, " | ")
+}
+
 type IdentifyDeviceLingoes struct {
-	Lingos   uint32
+	Lingos   LingoMask
 	Options  uint32
 	DeviceID uint32
 }
@@ -381,16 +409,27 @@ type SetUIMode struct {
 type StartIDPS struct{}
 
 type FIDIdentifyToken struct {
-	NumLingoes    byte
-	AccLingoes    []byte
+	AccLingoes    []uint8
 	DeviceOptions uint32
 	DeviceID      uint32
 }
 
+func (t *FIDIdentifyToken) MarshalBinary() ([]byte, error) {
+	var buf bytes.Buffer
+	binary.Write(&buf, binary.BigEndian, uint8(len(t.AccLingoes)))
+	binary.Write(&buf, binary.BigEndian, t.AccLingoes)
+	binary.Write(&buf, binary.BigEndian, t.DeviceOptions)
+	binary.Write(&buf, binary.BigEndian, t.DeviceID)
+	return buf.Bytes(), nil
+}
+
 func (t *FIDIdentifyToken) UnmarshalBinary(data []byte) error {
 	r := bytes.NewReader(data)
-	binary.Read(r, binary.BigEndian, &t.NumLingoes)
-	t.AccLingoes = make([]byte, t.NumLingoes)
+	numLingoes, err := r.ReadByte()
+	if err != nil {
+		return err
+	}
+	t.AccLingoes = make([]uint8, numLingoes)
 	binary.Read(r, binary.BigEndian, &t.AccLingoes)
 	binary.Read(r, binary.BigEndian, &t.DeviceOptions)
 	binary.Read(r, binary.BigEndian, &t.DeviceID)

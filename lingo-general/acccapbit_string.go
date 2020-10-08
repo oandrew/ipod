@@ -4,6 +4,18 @@ package general
 
 import "strconv"
 
+func _() {
+	// An "invalid array index" compiler error signifies that the constant values have changed.
+	// Re-run the stringer command to generate them again.
+	var x [1]struct{}
+	_ = x[AccCapAnalogLineOut-1]
+	_ = x[AccCapAnalogLineIn-2]
+	_ = x[AccCapAnalogVideoOut-4]
+	_ = x[AccCapUSBAudio-16]
+	_ = x[AccCapAppComm-512]
+	_ = x[AccCapCheckVolume-2048]
+}
+
 const (
 	_AccCapBit_name_0 = "AccCapAnalogLineOutAccCapAnalogLineIn"
 	_AccCapBit_name_1 = "AccCapAnalogVideoOut"

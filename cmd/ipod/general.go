@@ -6,6 +6,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 
+	"github.com/oandrew/ipod"
 	general "github.com/oandrew/ipod/lingo-general"
 
 	"github.com/fullsailor/pkcs7"
@@ -40,13 +41,13 @@ func (d *DevGeneral) SerialNum() string {
 
 func (d *DevGeneral) LingoProtocolVersion(lingo uint8) (major uint8, minor uint8) {
 	switch lingo {
-	case 0x00:
+	case ipod.LingoGeneralID:
 		return 1, 9
-	case 0x03:
+	case ipod.LingoDisplayRemoteID:
 		return 1, 5
-	case 0x04:
+	case ipod.LingoExtRemoteID:
 		return 1, 12
-	case 0x0a:
+	case ipod.LingoDigitalAudioID:
 		return 1, 2
 	default:
 		return 1, 1
@@ -55,7 +56,7 @@ func (d *DevGeneral) LingoProtocolVersion(lingo uint8) (major uint8, minor uint8
 
 func (d *DevGeneral) LingoOptions(lingo uint8) uint64 {
 	switch lingo {
-	case 0x00:
+	case ipod.LingoGeneralID:
 		return 0x000000063DEF73FF
 
 	default:
