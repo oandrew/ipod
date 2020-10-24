@@ -68,13 +68,16 @@ func (s *ButtonStates) UnmarshalBinary(data []byte) error {
 type ContextButtonBit uint32
 
 const (
-	ContextButtonVolumeUp ContextButtonBit = 1 << iota
+	// byte 0
+	ContextButtonPlayPause ContextButtonBit = 1 << iota
+	ContextButtonVolumeUp
 	ContextButtonVolumeDown
 	ContextButtonNextTrack
 	ContextButtonPreviousTrack
 	ContextButtonNextAlbum
 	ContextButtonPreviousAlbum
 	ContextButtonStop
+	// byte 1
 	ContextButtonPlayResume
 	ContextButtonPause
 	ContextButtonMuteToggle
@@ -83,6 +86,7 @@ const (
 	ContextButtonNextPlaylist
 	ContextButtonPreviousPlaylist
 	ContextButtonShuffleSettingAdvance
+	// byte 2
 	ContextButtonRepeatSettingAdvance
 	ContextButtonPowerOn
 	ContextButtonPowerOff
@@ -91,6 +95,7 @@ const (
 	ContextButtonBeginRewind
 	ContextButtonMenu
 	ContextButtonSelect
+	// byte 3
 	ContextButtonUpArrow
 	ContextButtonDownArrow
 	ContextButtonBacklightOff
