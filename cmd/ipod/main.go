@@ -330,6 +330,8 @@ func logCmd(cmd *ipod.Command, err error, msg string) {
 }
 
 func processFrames(frameTransport ipod.FrameReadWriter) {
+	serde := ipod.CommandSerde{}
+
 	for {
 		inFrame, err := frameTransport.ReadFrame()
 		if err == io.EOF {
@@ -352,10 +354,9 @@ func processFrames(frameTransport ipod.FrameReadWriter) {
 				continue
 			}
 
-			var inCmd ipod.Command
-			inCmdErr := inCmd.UnmarshalBinary(inPacket)
-			logCmd(&inCmd, inCmdErr, "<< CMD")
-			inCmdBuf.WriteCommand(&inCmd)
+			inCmd, err := serde.UnmarshalCmd(inPacket)
+			logCmd(inCmd, err, "<< CMD")
+			inCmdBuf.WriteCommand(inCmd)
 		}
 
 		outCmdBuf := ipod.CmdBuffer{}
@@ -368,7 +369,7 @@ func processFrames(frameTransport ipod.FrameReadWriter) {
 			outCmd := outCmdBuf.Commands[i]
 			logCmd(outCmd, nil, ">> CMD")
 
-			outPacket, err := outCmd.MarshalBinary()
+			outPacket, err := serde.MarshalCmd(outCmd)
 			logPacket(outPacket, err, ">> PACKET")
 
 			packetWriter := ipod.NewPacketWriter()
@@ -429,6 +430,8 @@ func dumpTrace(tr *trace.Reader) {
 		q.Enqueue(&msg)
 	}
 
+	serde := ipod.CommandSerde{}
+
 	for {
 		head := q.Head()
 		if head == nil {
@@ -458,9 +461,8 @@ func dumpTrace(tr *trace.Reader) {
 				continue
 			}
 
-			var cmd ipod.Command
-			cmdErr := cmd.UnmarshalBinary(packet)
-			logCmd(&cmd, cmdErr, dirPrefix(dir, "CMD"))
+			cmd, err := serde.UnmarshalCmd(packet)
+			logCmd(cmd, err, dirPrefix(dir, "CMD"))
 		}
 	}
 	log.Warnf("EOF")

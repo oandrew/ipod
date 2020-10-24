@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/oandrew/ipod"
-	"github.com/oandrew/ipod/lingo-audio"
+	audio "github.com/oandrew/ipod/lingo-audio"
 )
 
 type CustomPayload struct {
@@ -44,7 +44,10 @@ func TestCommand_MarshalBinary(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.cmd.MarshalBinary()
+			serde := ipod.CommandSerde{
+				TrxEnabled: tt.cmd.Transaction != nil,
+			}
+			got, err := serde.MarshalCmd(&tt.cmd)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Command.MarshalBinary() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -75,13 +78,16 @@ func TestCommand_UnmarshalBinary(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var got ipod.Command
-			if err := got.UnmarshalBinary(tt.data); (err != nil) != tt.wantErr {
+			serde := ipod.CommandSerde{
+				TrxEnabled: tt.want.Transaction != nil,
+			}
+			got, err := serde.UnmarshalCmd(tt.data)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Command.UnmarshalBinary() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Command.UnmarshalBinary() = %v, want %v", got, tt.want)
+			if !reflect.DeepEqual(got, &tt.want) {
+				t.Errorf("Command.UnmarshalBinary() = %v, want %v", got, &tt.want)
 			}
 
 		})
@@ -89,6 +95,7 @@ func TestCommand_UnmarshalBinary(t *testing.T) {
 }
 
 func BenchmarkCommand_MarshalBinary(b *testing.B) {
+	serde := ipod.CommandSerde{}
 	cmd := ipod.Command{
 		ID:          ipod.NewLingoCmdID(0x0a, 0x03),
 		Transaction: ipod.NewTransaction(0x03e7),
@@ -97,11 +104,12 @@ func BenchmarkCommand_MarshalBinary(b *testing.B) {
 		},
 	}
 	for i := 0; i < b.N; i++ {
-		cmd.MarshalBinary()
+		serde.MarshalCmd(&cmd)
 	}
 }
 
 func BenchmarkCommand_UnmarshalBinary(b *testing.B) {
+	serde := ipod.CommandSerde{}
 	packet := []byte{
 		0x0a, 0x03, 0x03, 0xe7, 0x00, 0x00, 0x1f, 0x40,
 		0x00, 0x00, 0x2b, 0x11, 0x00, 0x00, 0x2e, 0xe0,
@@ -111,7 +119,6 @@ func BenchmarkCommand_UnmarshalBinary(b *testing.B) {
 	}
 
 	for i := 0; i < b.N; i++ {
-		var cmd ipod.Command
-		cmd.UnmarshalBinary(packet)
+		serde.UnmarshalCmd(packet)
 	}
 }

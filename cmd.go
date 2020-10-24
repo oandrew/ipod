@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 
 	"log"
+
+	"github.com/sirupsen/logrus"
 )
 
 // UnknownPayload is a payload  that represents an unknown command
@@ -59,14 +61,42 @@ func (tr *Transaction) Delta(d int) *Transaction {
 	return nil
 }
 
-func (cmd *Command) MarshalBinary() ([]byte, error) {
+type CommandSerde struct {
+	TrxEnabled bool
+}
+
+func (s *CommandSerde) handleCmdID(cmdID LingoCmdID) {
+	prev := s.TrxEnabled
+	switch cmdID {
+	// RequestIdentify
+	case NewLingoCmdID(LingoGeneralID, 0x00):
+		s.TrxEnabled = false
+	// IdentifyDeviceLingoes
+	case NewLingoCmdID(LingoGeneralID, 0x13):
+		s.TrxEnabled = false
+	// StartIDPS
+	case NewLingoCmdID(LingoGeneralID, 0x38):
+		s.TrxEnabled = true
+	}
+	if prev != s.TrxEnabled {
+		if s.TrxEnabled {
+			logrus.Warn("Enabling transaction support")
+		} else {
+			logrus.Warn("Disabling transaction support")
+		}
+	}
+}
+
+func (s *CommandSerde) MarshalCmd(cmd *Command) ([]byte, error) {
 	pktBuf := &bytes.Buffer{}
 
 	if err := marshalLingoCmdID(pktBuf, cmd.ID); err != nil {
 		return nil, fmt.Errorf("ipod.Command marshal: %v", err)
 	}
 
-	if cmd.Transaction != nil {
+	s.handleCmdID(cmd.ID)
+
+	if s.TrxEnabled && cmd.Transaction != nil {
 		binary.Write(pktBuf, binary.BigEndian, *cmd.Transaction)
 	}
 	if cmd.Payload == nil {
@@ -90,23 +120,26 @@ func (cmd *Command) MarshalBinary() ([]byte, error) {
 
 }
 
-func (cmd *Command) UnmarshalBinary(pkt []byte) error {
+func (s *CommandSerde) UnmarshalCmd(pkt []byte) (*Command, error) {
+	var cmd Command
 	pktBuf := bytes.NewBuffer(pkt)
 	if err := unmarshalLingoCmdID(pktBuf, &cmd.ID); err != nil {
-		return fmt.Errorf("ipod.Command unmarshal: %v", err)
+		return &cmd, fmt.Errorf("ipod.Command unmarshal: %v", err)
 	}
 
-	lookup, ok := Lookup(cmd.ID, pktBuf.Len())
+	s.handleCmdID(cmd.ID)
+
+	lookup, ok := Lookup(cmd.ID, pktBuf.Len(), s.TrxEnabled)
 	if !ok {
 		cmd.Payload = UnknownPayload(pktBuf.Bytes())
-		return fmt.Errorf("ipod.Command unmarshal: unknown cmd %v", cmd.ID)
+		return &cmd, fmt.Errorf("ipod.Command unmarshal: unknown cmd %v", cmd.ID)
 	}
 
 	if lookup.Transaction {
 		var tr Transaction
 		err := binary.Read(pktBuf, binary.BigEndian, &tr)
 		if err != nil {
-			return err
+			return &cmd, err
 		}
 		cmd.Transaction = &tr
 	}
@@ -114,18 +147,18 @@ func (cmd *Command) UnmarshalBinary(pkt []byte) error {
 	if d, ok := lookup.Payload.(encoding.BinaryUnmarshaler); ok {
 		err := d.UnmarshalBinary(pktBuf.Bytes())
 		if err != nil {
-			return fmt.Errorf("ipod.Command unmarshal: BinaryUnmarshaler: %v", err)
+			return &cmd, fmt.Errorf("ipod.Command unmarshal: BinaryUnmarshaler: %v", err)
 		}
 
 	} else {
 		err := binary.Read(pktBuf, binary.BigEndian, lookup.Payload)
 		if err != nil {
-			return fmt.Errorf("ipod.Command unmarshal: binary.Read: %v", err)
+			return &cmd, fmt.Errorf("ipod.Command unmarshal: binary.Read: %v", err)
 		}
 	}
 	//cmd.Payload = reflect.Indirect(reflect.ValueOf(lookup.Payload)).Interface()
 	cmd.Payload = lookup.Payload
-	return nil
+	return &cmd, nil
 
 }
 

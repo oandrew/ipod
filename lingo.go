@@ -153,7 +153,7 @@ type LookupResult struct {
 }
 
 // Lookup finds a the payload by LingoCmdID using payloadSize as a hint
-func Lookup(id LingoCmdID, payloadSize int) (LookupResult, bool) {
+func Lookup(id LingoCmdID, payloadSize int, defaultTrxEnabled bool) (LookupResult, bool) {
 	payloads, ok := mIDToType[id]
 	if !ok {
 		return LookupResult{}, false
@@ -182,7 +182,7 @@ func Lookup(id LingoCmdID, payloadSize int) (LookupResult, bool) {
 	if len(payloads) == 1 {
 		return LookupResult{
 			Payload:     reflect.New(payloads[0]).Interface(),
-			Transaction: true,
+			Transaction: defaultTrxEnabled,
 		}, true
 	}
 

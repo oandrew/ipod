@@ -111,6 +111,7 @@ func (m ContextButtonMask) String() string {
 
 type ContextButtonStatus struct {
 	State ContextButtonMask
+	_     []byte
 }
 
 func (s *ContextButtonStatus) MarshalBinary() ([]byte, error) {
