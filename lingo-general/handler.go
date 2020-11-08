@@ -120,6 +120,12 @@ func HandleGeneral(req *ipod.Command, tr ipod.CommandWriter, dev DeviceGeneral) 
 		ipod.Respond(req, tr, &resp)
 	case *RequestiPodSerialNum:
 		ipod.Respond(req, tr, &ReturniPodSerialNum{Serial: ipod.StringToBytes(dev.SerialNum())})
+	case *RequestiPodModelNum:
+		ipod.Respond(req, tr, &ReturniPodModelNum{
+			// iphone 4
+			ModelID: 0x00111349,
+			Model:   ipod.StringToBytes("MC676"),
+		})
 	case *RequestLingoProtocolVersion:
 		var resp ReturnLingoProtocolVersion
 		resp.Lingo = msg.Lingo

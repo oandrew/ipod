@@ -6,6 +6,7 @@ import (
 	"encoding"
 	"encoding/binary"
 	"errors"
+	"io/ioutil"
 	"strings"
 
 	"github.com/oandrew/ipod"
@@ -30,6 +31,8 @@ var Lingos struct {
 	ReturniPodSoftwareVersion      `id:"0x0A"`
 	RequestiPodSerialNum           `id:"0x0B"`
 	ReturniPodSerialNum            `id:"0x0C"`
+	RequestiPodModelNum            `id:"0x0D"`
+	ReturniPodModelNum             `id:"0x0E"`
 	RequestLingoProtocolVersion    `id:"0x0F"`
 	ReturnLingoProtocolVersion     `id:"0x10"`
 	RequestTransportMaxPayloadSize `id:"0x11"`
@@ -166,6 +169,31 @@ func (s ReturniPodSerialNum) MarshalBinary() ([]byte, error) {
 func (s *ReturniPodSerialNum) UnmarshalBinary(data []byte) error {
 	s.Serial = make([]byte, len(data))
 	copy(s.Serial, data)
+	return nil
+}
+
+type RequestiPodModelNum struct {
+}
+type ReturniPodModelNum struct {
+	ModelID uint32
+	Model   []byte
+}
+
+func (s ReturniPodModelNum) MarshalBinary() ([]byte, error) {
+	var buf bytes.Buffer
+	binary.Write(&buf, binary.BigEndian, s.ModelID)
+	buf.Write(s.Model)
+	return buf.Bytes(), nil
+}
+
+func (s *ReturniPodModelNum) UnmarshalBinary(data []byte) error {
+	buf := bytes.NewBuffer(data)
+	binary.Read(buf, binary.BigEndian, &s.ModelID)
+	model, err := ioutil.ReadAll(buf)
+	if err != nil {
+		return err
+	}
+	s.Model = model
 	return nil
 }
 
