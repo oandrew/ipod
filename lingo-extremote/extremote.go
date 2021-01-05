@@ -30,6 +30,8 @@ var Lingos struct {
 	RetArtworkFormats                          `id:"0x000F"`
 	GetTrackArtworkData                        `id:"0x0010"`
 	RetTrackArtworkData                        `id:"0x0011"`
+	RequestiPodName                            `id:"0x0014"`
+	ReturniPodName                             `id:"0x0015"`
 	ResetDBSelection                           `id:"0x0016"`
 	SelectDBRecord                             `id:"0x0017"`
 	GetNumberCategorizedDBRecords              `id:"0x0018"`
@@ -247,6 +249,13 @@ type RetTrackArtworkData struct {
 	BottomRightY uint16
 	RowSize      uint32
 	Data         []byte
+}
+
+type RequestiPodName struct {
+}
+
+type ReturniPodName struct {
+	Name []byte
 }
 
 //ack
